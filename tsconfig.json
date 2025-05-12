@@ -1,0 +1,8 @@
+{
+  "extends": "@tsconfig/node12/tsconfig.json",
+  "compilerOptions": {
+    "target": "es2015",
+    "preserveConstEnums": true,
+    "outDir": "build"
+  }
+}
