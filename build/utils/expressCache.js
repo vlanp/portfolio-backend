@@ -55,7 +55,7 @@ const genCacheKey = (req) => {
     const body = req.body ? stableStringify(req.body) : "";
     return `${method}-${originalUrl}-${query}-${body}`;
 };
-const expressCache = ({ dependencies = [], timeToLiveMin = 1, }) => {
+const expressCache = ({ dependencies = [], timeToLiveMin = 60, }) => {
     const timeToLiveMs = timeToLiveMin * 60 * 1000;
     const cache = ExpressCache.getInstance();
     return (req, res, next) => {
@@ -66,6 +66,7 @@ const expressCache = ({ dependencies = [], timeToLiveMin = 1, }) => {
         const cacheKey = genCacheKey(req);
         const cachedResponse = cache.get(cacheKey);
         if (cachedResponse) {
+            console.log(`Cache hit for ${cacheKey}`);
             res.status(200).json(cachedResponse);
             return;
         }
@@ -73,14 +74,14 @@ const expressCache = ({ dependencies = [], timeToLiveMin = 1, }) => {
         const originalStatus = res.status;
         res.status = function (code) {
             responseStatus = code;
-            return originalStatus(code);
+            return originalStatus.call(this, code);
         };
         const originalJson = res.json;
         res.json = function (body) {
             if (responseStatus >= 200 && responseStatus < 300) {
                 cache.set(cacheKey, body, timeToLiveMs, dependencies);
             }
-            return originalJson(body);
+            return originalJson.call(this, body);
         };
         next();
     };

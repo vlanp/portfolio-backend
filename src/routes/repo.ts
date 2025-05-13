@@ -2,6 +2,7 @@ import express from "express";
 import { IRepo, Repo } from "../models/IRepo.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import expressCache, { invalidateCache } from "../utils/expressCache.js";
+import { getContent, getTags, getTree } from "../utils/github.js";
 
 const router = express.Router();
 
@@ -94,22 +95,58 @@ router.get("/repos", async (req, res) => {
 });
 
 router.get(
-  "/repo/:id",
+  "/repo/:repoid/tags",
   expressCache({
     dependencies: ["repo"],
-    timeToLiveMin: 5,
+    timeToLiveMin: 15,
   }),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const repo = await Repo.findById(id);
+      const { repoid } = req.params;
+      const repo = await Repo.findById(repoid);
       if (!repo) {
         res.status(404).json({
-          message: "No repo found with id " + id,
+          message: "No repo found with id " + repoid,
         });
         return;
       }
-      res.status(200).json(repo);
+      const tags = await getTags(repo);
+      res.status(200).json(tags);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Internal server error",
+      });
+    }
+  }
+);
+
+router.get(
+  "/repo/:repoid/docs/:sha",
+  expressCache({
+    dependencies: [],
+    timeToLiveMin: 15,
+  }),
+  async (req, res) => {
+    try {
+      const { sha, repoid } = req.params;
+      const repo = await Repo.findById(repoid);
+      if (!repo) {
+        res.status(404).json({
+          message: "No repo found with id " + repoid,
+        });
+        return;
+      }
+      const docsTree = await getTree(repo, sha);
+      const dirs = docsTree.data.tree.filter((item) => item.type === "tree");
+
+      const files = docsTree.data.tree.filter(
+        (item) => item.type === "blob" && item.path.endsWith(".md")
+      );
+
+      const content = await getContent(repo, files[0].path);
+
+      res.status(200).json(content);
     } catch (error) {
       console.error(error);
       res.status(500).json({

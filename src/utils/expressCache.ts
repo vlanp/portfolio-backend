@@ -85,7 +85,7 @@ type IDependency = "repo";
 
 const expressCache = ({
   dependencies = [],
-  timeToLiveMin = 1,
+  timeToLiveMin = 60,
 }: {
   dependencies: IDependency[];
   timeToLiveMin: number;
@@ -103,6 +103,7 @@ const expressCache = ({
     const cachedResponse = cache.get(cacheKey);
 
     if (cachedResponse) {
+      console.log(`Cache hit for ${cacheKey}`);
       res.status(200).json(cachedResponse);
       return;
     }
@@ -112,7 +113,7 @@ const expressCache = ({
     const originalStatus = res.status;
     res.status = function (code: number) {
       responseStatus = code;
-      return originalStatus(code);
+      return originalStatus.call(this, code);
     };
 
     const originalJson = res.json;
@@ -120,7 +121,7 @@ const expressCache = ({
       if (responseStatus >= 200 && responseStatus < 300) {
         cache.set(cacheKey, body, timeToLiveMs, dependencies);
       }
-      return originalJson(body);
+      return originalJson.call(this, body);
     };
 
     next();

@@ -1,6 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
-dotenv.config();
 import mongoose from "mongoose";
 import checkedEnv from "./utils/checkEnv.js";
 import repoRouter from "./routes/repo.js";
