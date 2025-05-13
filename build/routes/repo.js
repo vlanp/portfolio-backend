@@ -10,8 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import express from "express";
 import { Repo } from "../models/IRepo.js";
 import isAdmin from "../middlewares/isAdmin.js";
-import expressCache, { invalidateCache } from "../utils/expressCache.js";
-import { getContent, getTags, getTree } from "../utils/github.js";
+import { getContent, getDocsTree, getTags } from "../utils/github.js";
 const router = express.Router();
 router.post("/repo", isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -71,7 +70,6 @@ router.post("/repo", isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, fu
             path,
         });
         const createdRepo = yield newRepo.save();
-        invalidateCache("repo");
         res.status(201).json({
             message: "Repo added successfully into the database",
             repo: createdRepo,
@@ -96,10 +94,7 @@ router.get("/repos", (req, res) => __awaiter(void 0, void 0, void 0, function* (
         });
     }
 }));
-router.get("/repo/:repoid/tags", expressCache({
-    dependencies: ["repo"],
-    timeToLiveMin: 15,
-}), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get("/repo/:repoid/lastTag", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { repoid } = req.params;
         const repo = yield Repo.findById(repoid);
@@ -110,7 +105,73 @@ router.get("/repo/:repoid/tags", expressCache({
             return;
         }
         const tags = yield getTags(repo);
-        res.status(200).json(tags);
+        const lastTag = tags[0];
+        if (!lastTag) {
+            res.status(404).json({
+                message: "No tags found for this repo",
+            });
+            return;
+        }
+        const docsTree = yield getDocsTree(repo, lastTag.commit.sha);
+        const dirs = docsTree.tree.filter((item) => item.type === "tree");
+        const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
+        const contentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
+            const content = yield getContent(repo, file.path);
+            return { file, content };
+        }));
+        const contents = yield Promise.all(contentsPromises);
+        const lastTagContent = {
+            tag: lastTag,
+            orderedTags: tags,
+            orderedDirs: dirs
+                .map((dir) => {
+                const orderedFiles = contents
+                    .filter((content) => {
+                    if (!content.content) {
+                        console.log(content);
+                    }
+                    const dirPath = content.file.path
+                        .split("/")
+                        .slice(0, -1)
+                        .join("/");
+                    return dirPath === dir.path;
+                })
+                    .sort((a, b) => {
+                    const navA = a.content.matterContent.nav;
+                    const navB = b.content.matterContent.nav;
+                    if (Number.isInteger(navA) && Number.isInteger(navB)) {
+                        return navA - navB;
+                    }
+                    if (Number.isInteger(navA)) {
+                        return -1;
+                    }
+                    if (Number.isInteger(navB)) {
+                        return 1;
+                    }
+                    return 0;
+                });
+                return {
+                    dir: dir,
+                    orderedFiles: orderedFiles,
+                };
+            })
+                .filter((dir) => dir.orderedFiles.length > 0)
+                .sort((a, b) => {
+                const navA = a.orderedFiles[0].content.matterContent.nav;
+                const navB = b.orderedFiles[0].content.matterContent.nav;
+                if (Number.isInteger(navA) && Number.isInteger(navB)) {
+                    return navA - navB;
+                }
+                if (Number.isInteger(navA)) {
+                    return -1;
+                }
+                if (Number.isInteger(navB)) {
+                    return 1;
+                }
+                return 0;
+            }),
+        };
+        res.status(200).json(lastTagContent);
     }
     catch (error) {
         console.error(error);
@@ -119,12 +180,9 @@ router.get("/repo/:repoid/tags", expressCache({
         });
     }
 }));
-router.get("/repo/:repoid/docs/:sha", expressCache({
-    dependencies: [],
-    timeToLiveMin: 15,
-}), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { sha, repoid } = req.params;
+        const { repoid, sha } = req.params;
         const repo = yield Repo.findById(repoid);
         if (!repo) {
             res.status(404).json({
@@ -132,11 +190,74 @@ router.get("/repo/:repoid/docs/:sha", expressCache({
             });
             return;
         }
-        const docsTree = yield getTree(repo, sha);
-        const dirs = docsTree.data.tree.filter((item) => item.type === "tree");
-        const files = docsTree.data.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
-        const content = yield getContent(repo, files[0].path);
-        res.status(200).json(content);
+        const tags = yield getTags(repo);
+        const tag = tags.find((tag) => tag.commit.sha === sha);
+        if (!tag) {
+            res.status(404).json({
+                message: "No tag found with sha " + sha,
+            });
+            return;
+        }
+        const docsTree = yield getDocsTree(repo, tag.commit.sha);
+        const dirs = docsTree.tree.filter((item) => item.type === "tree");
+        const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
+        const contentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
+            const content = yield getContent(repo, file.path);
+            return { file, content };
+        }));
+        const contents = yield Promise.all(contentsPromises);
+        const lastTagContent = {
+            tag: tag,
+            orderedTags: tags,
+            orderedDirs: dirs
+                .map((dir) => {
+                const orderedFiles = contents
+                    .filter((content) => {
+                    if (!content.content) {
+                        console.log(content);
+                    }
+                    const dirPath = content.file.path
+                        .split("/")
+                        .slice(0, -1)
+                        .join("/");
+                    return dirPath === dir.path;
+                })
+                    .sort((a, b) => {
+                    const navA = a.content.matterContent.nav;
+                    const navB = b.content.matterContent.nav;
+                    if (Number.isInteger(navA) && Number.isInteger(navB)) {
+                        return navA - navB;
+                    }
+                    if (Number.isInteger(navA)) {
+                        return -1;
+                    }
+                    if (Number.isInteger(navB)) {
+                        return 1;
+                    }
+                    return 0;
+                });
+                return {
+                    dir: dir,
+                    orderedFiles: orderedFiles,
+                };
+            })
+                .filter((dir) => dir.orderedFiles.length > 0)
+                .sort((a, b) => {
+                const navA = a.orderedFiles[0].content.matterContent.nav;
+                const navB = b.orderedFiles[0].content.matterContent.nav;
+                if (Number.isInteger(navA) && Number.isInteger(navB)) {
+                    return navA - navB;
+                }
+                if (Number.isInteger(navA)) {
+                    return -1;
+                }
+                if (Number.isInteger(navB)) {
+                    return 1;
+                }
+                return 0;
+            }),
+        };
+        res.status(200).json(lastTagContent);
     }
     catch (error) {
         console.error(error);

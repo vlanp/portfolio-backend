@@ -21,134 +21,120 @@ type IOctokitTreeResponse = Awaited<
   ReturnType<OctokitType["rest"]["git"]["getTree"]>
 >;
 
+interface FrontMatterData {
+  title: string;
+  description: string;
+  nav: number;
+}
+
+type IGrayMatterFile<H> = GrayMatterFile<string> & {
+  data: H;
+};
+
+interface IContent {
+  htmlContent: string;
+  matterContent: IGrayMatterFile<FrontMatterData>["data"];
+}
+
 const cacheOptions = {
   max: 100,
   ttl: 1000 * 60 * 60,
 };
 
-const tagsCache = new LRUCache<string, IOctokitTagsResponse>(cacheOptions);
-const treeCache = new LRUCache<string, IOctokitTreeResponse>(cacheOptions);
-const rawContentCache = new LRUCache<string, IOctokitContentResponse>(
+const tagsCache = new LRUCache<string, IOctokitTagsResponse["data"]>(
   cacheOptions
 );
-const matterContentCache = new LRUCache<string, GrayMatterFile<never>>(
+const treeCache = new LRUCache<string, IOctokitTreeResponse["data"]>(
   cacheOptions
 );
-const htmlContentCache = new LRUCache<string, string>(cacheOptions);
+const contentCache = new LRUCache<string, IContent>(cacheOptions);
 
 const octokit = new Octokit({
   auth: checkedEnv.GITHUB_READ_TOKEN,
 });
 
-const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse> => {
+const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTags";
   const cachedResult = tagsCache.get(cacheKey);
   if (cachedResult) {
     console.log(`Cache hit for tags: ${cacheKey}`);
     return cachedResult;
   }
-  const result = await octokit.rest.repos.listTags({
+  const response = await octokit.rest.repos.listTags({
     owner: repo.owner,
     repo: repo.repo,
   });
 
-  tagsCache.set(cacheKey, result);
+  tagsCache.set(cacheKey, response.data);
 
-  return result;
+  return response.data;
 };
 
-const getTree = async (
+const getDocsTree = async (
   repo: IRepo,
   sha: string
-): Promise<IOctokitTreeResponse> => {
+): Promise<IOctokitTreeResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTree/" + sha;
   const cachedResult = treeCache.get(cacheKey);
   if (cachedResult) {
     console.log(`Cache hit for tree: ${cacheKey}`);
     return cachedResult;
   }
-  const tree = await octokit.rest.git.getTree({
+  const response = await octokit.rest.git.getTree({
     owner: repo.owner,
     repo: repo.repo,
     tree_sha: sha,
     recursive: "true",
   });
-  const docsItems = tree.data.tree.filter(
+  const docsItems = response.data.tree.filter(
     (item) => item.path.startsWith("docs/") || item.path === "docs"
   );
 
-  const result = {
-    ...tree,
-    data: {
-      ...tree.data,
-      tree: docsItems,
-    },
+  const data = {
+    ...response.data,
+    tree: docsItems,
   };
 
-  treeCache.set(cacheKey, result);
+  treeCache.set(cacheKey, data);
 
-  return result;
+  return data;
 };
 
-const getRawContent = async (
-  repo: IRepo,
-  path: string
-): Promise<IOctokitContentResponse> => {
+const getContent = async (repo: IRepo, path: string): Promise<IContent> => {
   const cacheKey = stableStringify(repo) + "/getRawContent/" + path;
-  const cachedResult = rawContentCache.get(cacheKey);
+  const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
     console.log(`Cache hit for raw content: ${cacheKey}`);
     return cachedResult;
   }
-  const result = await octokit.rest.repos.getContent({
+  const response = await octokit.rest.repos.getContent({
     owner: repo.owner,
     repo: repo.repo,
     path: path,
     headers: { accept: "application/vnd.github.raw+json" },
   });
-  rawContentCache.set(cacheKey, result);
-  return result;
-};
-
-const getMatterContent = async (
-  repo: IRepo,
-  path: string
-): Promise<GrayMatterFile<never>> => {
-  const cacheKey = stableStringify(repo) + "/getMatterContent/" + path;
-  const cachedResult = matterContentCache.get(cacheKey);
-  if (cachedResult) {
-    console.log(`Cache hit for matter content: ${cacheKey}`);
-    return cachedResult;
-  }
-  const rawContent = await getRawContent(repo, path);
-  if (typeof rawContent.data !== "string") {
-    rawContentCache.delete(stableStringify(repo) + "/getRawContent/" + path);
+  if (typeof response.data !== "string") {
     throw new Error("Content is not a string");
   }
-  const matterContent = matter(rawContent.data);
-  matterContentCache.set(cacheKey, matterContent);
-  return matterContent;
-};
-
-const getHtmlContent = async (repo: IRepo, path: string): Promise<string> => {
-  const cacheKey = stableStringify(repo) + "/getHtmlContent/" + path;
-  const cachedResult = htmlContentCache.get(cacheKey);
-  if (cachedResult) {
-    console.log(`Cache hit for HTML content: ${cacheKey}`);
-    return cachedResult;
-  }
-  const matterContent = await getMatterContent(repo, path);
+  const matterContent = matter(
+    response.data
+  ) as IGrayMatterFile<FrontMatterData>;
   const processedContent = await remark()
     .use(html)
     .process(matterContent.content);
   const contentHtml = processedContent.toString();
-  htmlContentCache.set(cacheKey, contentHtml);
-  return contentHtml;
+  const content: IContent = {
+    htmlContent: contentHtml,
+    matterContent: matterContent.data,
+  };
+  contentCache.set(cacheKey, content);
+  return content;
 };
 
-export { getTags, getTree, getRawContent, getMatterContent, getHtmlContent };
+export { getTags, getDocsTree, getContent };
 export type {
   IOctokitContentResponse,
   IOctokitTagsResponse,
   IOctokitTreeResponse,
+  IContent,
 };
