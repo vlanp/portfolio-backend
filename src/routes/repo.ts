@@ -272,4 +272,23 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
   }
 });
 
+router.get("/repo/:repoid", async (req, res) => {
+  try {
+    const { repoid } = req.params;
+    const repo = await Repo.findById(repoid);
+    if (!repo) {
+      res.status(404).json({
+        message: "No repo found with id " + repoid,
+      });
+      return;
+    }
+    res.status(200).json(repo);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;
