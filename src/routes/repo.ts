@@ -339,4 +339,41 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
   }
 });
 
+router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
+  try {
+    const { repoid, filepath } = req.params;
+    const { sha } = req.query;
+    if (typeof sha !== "string") {
+      res.status(400).json({
+        message: "ref query params must be a string",
+      });
+      return;
+    }
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
+    const repo = await Repo.findById(repoid);
+    if (!repo) {
+      res.status(404).json({
+        message: "No repo found with id " + repoid,
+      });
+      return;
+    }
+    const docsTree = await getDocsTree(repo, sha);
+    if (docsTree.tree.map((it) => it.path).includes(filepath)) {
+      res.status(200).json({ exist: true });
+    } else {
+      res.status(200).json({ exist: false });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;

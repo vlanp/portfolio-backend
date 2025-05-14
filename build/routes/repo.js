@@ -331,4 +331,42 @@ router.get("/repo/:repoid/fileContent/:filepath", (req, res) => __awaiter(void 0
         });
     }
 }));
+router.get("/repo/:repoid/didFileExist/:filepath", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { repoid, filepath } = req.params;
+        const { sha } = req.query;
+        if (typeof sha !== "string") {
+            res.status(400).json({
+                message: "ref query params must be a string",
+            });
+            return;
+        }
+        if (!isValidObjectId(repoid)) {
+            res.status(400).json({
+                message: "Invalid repo id",
+            });
+            return;
+        }
+        const repo = yield Repo.findById(repoid);
+        if (!repo) {
+            res.status(404).json({
+                message: "No repo found with id " + repoid,
+            });
+            return;
+        }
+        const docsTree = yield getDocsTree(repo, sha);
+        if (docsTree.tree.map((it) => it.path).includes(filepath)) {
+            res.status(200).json({ exist: true });
+        }
+        else {
+            res.status(200).json({ exist: false });
+        }
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}));
 export default router;
