@@ -3,6 +3,7 @@ import { IRepo, Repo } from "../models/IRepo.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags } from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
+import { isValidObjectId } from "mongoose";
 
 const router = express.Router();
 
@@ -95,6 +96,12 @@ router.get("/repos", async (req, res) => {
 router.get("/repo/:repoid/lastTag", async (req, res) => {
   try {
     const { repoid } = req.params;
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
     const repo = await Repo.findById(repoid);
     if (!repo) {
       res.status(404).json({
@@ -185,6 +192,12 @@ router.get("/repo/:repoid/lastTag", async (req, res) => {
 router.get("/repo/:repoid/tag/:sha", async (req, res) => {
   try {
     const { repoid, sha } = req.params;
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
     const repo = await Repo.findById(repoid);
     if (!repo) {
       res.status(404).json({
@@ -275,6 +288,12 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
 router.get("/repo/:repoid", async (req, res) => {
   try {
     const { repoid } = req.params;
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
     const repo = await Repo.findById(repoid);
     if (!repo) {
       res.status(404).json({
