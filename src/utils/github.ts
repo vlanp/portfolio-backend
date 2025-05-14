@@ -103,10 +103,9 @@ const getDocsTree = async (
 const getContent = async (
   repo: IRepo,
   path: string,
-  ref?: string
+  ref: string
 ): Promise<IContent> => {
-  const cacheKey =
-    stableStringify(repo) + "/getRawContent/" + path + (ref ? "/" + ref : "");
+  const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
     console.log(`Cache hit for raw content: ${cacheKey}`);

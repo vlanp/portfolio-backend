@@ -123,7 +123,7 @@ router.get("/repo/:repoid/lastTag", async (req, res) => {
       (item) => item.type === "blob" && item.path.endsWith(".md")
     );
     const filesContentsPromises = files.map(async (file) => {
-      const fileContent = await getContent(repo, file.path);
+      const fileContent = await getContent(repo, file.path, lastTag.commit.sha);
       return { file, matterContent: fileContent.matterContent };
     });
     const filesContents = await Promise.all(filesContentsPromises);
@@ -214,7 +214,7 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
       (item) => item.type === "blob" && item.path.endsWith(".md")
     );
     const filesContentsPromises = files.map(async (file) => {
-      const fileContent = await getContent(repo, file.path);
+      const fileContent = await getContent(repo, file.path, tag.commit.sha);
       return { file, matterContent: fileContent.matterContent };
     });
     const filesContents = await Promise.all(filesContentsPromises);
@@ -303,6 +303,13 @@ router.get("/repo/:repoid", async (req, res) => {
 router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
   try {
     const { repoid, filepath } = req.params;
+    const { ref } = req.query;
+    if (typeof ref !== "string") {
+      res.status(400).json({
+        message: "ref query params must be a string",
+      });
+      return;
+    }
     if (!isValidObjectId(repoid)) {
       res.status(400).json({
         message: "Invalid repo id",
@@ -316,12 +323,7 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
       });
       return;
     }
-    const { ref } = req.query;
-    const fileContent = await getContent(
-      repo,
-      filepath,
-      typeof ref === "string" ? ref : undefined
-    );
+    const fileContent = await getContent(repo, filepath, ref);
     if (!fileContent) {
       res.status(404).json({
         message: "No file found with path " + filepath,

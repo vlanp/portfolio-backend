@@ -123,7 +123,7 @@ router.get("/repo/:repoid/lastTag", (req, res) => __awaiter(void 0, void 0, void
         const dirs = docsTree.tree.filter((item) => item.type === "tree");
         const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
         const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
-            const fileContent = yield getContent(repo, file.path);
+            const fileContent = yield getContent(repo, file.path, lastTag.commit.sha);
             return { file, matterContent: fileContent.matterContent };
         }));
         const filesContents = yield Promise.all(filesContentsPromises);
@@ -209,7 +209,7 @@ router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, voi
         const dirs = docsTree.tree.filter((item) => item.type === "tree");
         const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
         const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
-            const fileContent = yield getContent(repo, file.path);
+            const fileContent = yield getContent(repo, file.path, tag.commit.sha);
             return { file, matterContent: fileContent.matterContent };
         }));
         const filesContents = yield Promise.all(filesContentsPromises);
@@ -295,6 +295,13 @@ router.get("/repo/:repoid", (req, res) => __awaiter(void 0, void 0, void 0, func
 router.get("/repo/:repoid/fileContent/:filepath", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { repoid, filepath } = req.params;
+        const { ref } = req.query;
+        if (typeof ref !== "string") {
+            res.status(400).json({
+                message: "ref query params must be a string",
+            });
+            return;
+        }
         if (!isValidObjectId(repoid)) {
             res.status(400).json({
                 message: "Invalid repo id",
@@ -308,8 +315,7 @@ router.get("/repo/:repoid/fileContent/:filepath", (req, res) => __awaiter(void 0
             });
             return;
         }
-        const { ref } = req.query;
-        const fileContent = yield getContent(repo, filepath, typeof ref === "string" ? ref : undefined);
+        const fileContent = yield getContent(repo, filepath, ref);
         if (!fileContent) {
             res.status(404).json({
                 message: "No file found with path " + filepath,
