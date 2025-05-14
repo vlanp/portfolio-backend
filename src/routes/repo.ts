@@ -122,31 +122,26 @@ router.get("/repo/:repoid/lastTag", async (req, res) => {
     const files = docsTree.tree.filter(
       (item) => item.type === "blob" && item.path.endsWith(".md")
     );
-    const contentsPromises = files.map(async (file) => {
-      const content = await getContent(repo, file.path);
-      return { file, content };
+    const filesContentsPromises = files.map(async (file) => {
+      const fileContent = await getContent(repo, file.path);
+      return { file, matterContent: fileContent.matterContent };
     });
-    const contents = await Promise.all(contentsPromises);
+    const filesContents = await Promise.all(filesContentsPromises);
     const lastTagContent: ITagContent = {
       tag: lastTag,
       orderedTags: tags,
       orderedDirs: dirs
         .map((dir) => {
-          const orderedFiles = contents
-            .filter((content) => {
-              if (!content.content) {
-                console.log(content);
-              }
-
-              const dirPath = content.file.path
-                .split("/")
-                .slice(0, -1)
-                .join("/");
-              return dirPath === dir.path;
+          const orderedFiles = filesContents
+            .filter((fileContent) => {
+              return (
+                fileContent.file.path.split("/").slice(0, -1).join("/") ===
+                dir.path
+              );
             })
             .sort((a, b) => {
-              const navA = a.content.matterContent.nav;
-              const navB = b.content.matterContent.nav;
+              const navA = a.matterContent.nav;
+              const navB = b.matterContent.nav;
               if (Number.isInteger(navA) && Number.isInteger(navB)) {
                 return navA - navB;
               }
@@ -165,8 +160,8 @@ router.get("/repo/:repoid/lastTag", async (req, res) => {
         })
         .filter((dir) => dir.orderedFiles.length > 0)
         .sort((a, b) => {
-          const navA = a.orderedFiles[0].content.matterContent.nav;
-          const navB = b.orderedFiles[0].content.matterContent.nav;
+          const navA = a.orderedFiles[0].matterContent.nav;
+          const navB = b.orderedFiles[0].matterContent.nav;
           if (Number.isInteger(navA) && Number.isInteger(navB)) {
             return navA - navB;
           }
@@ -218,31 +213,26 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
     const files = docsTree.tree.filter(
       (item) => item.type === "blob" && item.path.endsWith(".md")
     );
-    const contentsPromises = files.map(async (file) => {
-      const content = await getContent(repo, file.path);
-      return { file, content };
+    const filesContentsPromises = files.map(async (file) => {
+      const fileContent = await getContent(repo, file.path);
+      return { file, matterContent: fileContent.matterContent };
     });
-    const contents = await Promise.all(contentsPromises);
-    const lastTagContent: ITagContent = {
+    const filesContents = await Promise.all(filesContentsPromises);
+    const tagContent: ITagContent = {
       tag: tag,
       orderedTags: tags,
       orderedDirs: dirs
         .map((dir) => {
-          const orderedFiles = contents
-            .filter((content) => {
-              if (!content.content) {
-                console.log(content);
-              }
-
-              const dirPath = content.file.path
-                .split("/")
-                .slice(0, -1)
-                .join("/");
-              return dirPath === dir.path;
+          const orderedFiles = filesContents
+            .filter((fileContent) => {
+              return (
+                fileContent.file.path.split("/").slice(0, -1).join("/") ===
+                dir.path
+              );
             })
             .sort((a, b) => {
-              const navA = a.content.matterContent.nav;
-              const navB = b.content.matterContent.nav;
+              const navA = a.matterContent.nav;
+              const navB = b.matterContent.nav;
               if (Number.isInteger(navA) && Number.isInteger(navB)) {
                 return navA - navB;
               }
@@ -261,8 +251,8 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
         })
         .filter((dir) => dir.orderedFiles.length > 0)
         .sort((a, b) => {
-          const navA = a.orderedFiles[0].content.matterContent.nav;
-          const navB = b.orderedFiles[0].content.matterContent.nav;
+          const navA = a.orderedFiles[0].matterContent.nav;
+          const navB = b.orderedFiles[0].matterContent.nav;
           if (Number.isInteger(navA) && Number.isInteger(navB)) {
             return navA - navB;
           }
@@ -276,7 +266,7 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
         }),
     };
 
-    res.status(200).json(lastTagContent);
+    res.status(200).json(tagContent);
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -302,6 +292,43 @@ router.get("/repo/:repoid", async (req, res) => {
       return;
     }
     res.status(200).json(repo);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+});
+
+router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
+  try {
+    const { repoid, filepath } = req.params;
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
+    const repo = await Repo.findById(repoid);
+    if (!repo) {
+      res.status(404).json({
+        message: "No repo found with id " + repoid,
+      });
+      return;
+    }
+    const { ref } = req.query;
+    const fileContent = await getContent(
+      repo,
+      filepath,
+      typeof ref === "string" ? ref : undefined
+    );
+    if (!fileContent) {
+      res.status(404).json({
+        message: "No file found with path " + filepath,
+      });
+      return;
+    }
+    res.status(200).json(fileContent);
   } catch (error) {
     console.error(error);
     res.status(500).json({

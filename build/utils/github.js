@@ -56,8 +56,8 @@ const getDocsTree = (repo, sha) => __awaiter(void 0, void 0, void 0, function* (
     treeCache.set(cacheKey, data);
     return data;
 });
-const getContent = (repo, path) => __awaiter(void 0, void 0, void 0, function* () {
-    const cacheKey = stableStringify(repo) + "/getRawContent/" + path;
+const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, function* () {
+    const cacheKey = stableStringify(repo) + "/getRawContent/" + path + (ref ? "/" + ref : "");
     const cachedResult = contentCache.get(cacheKey);
     if (cachedResult) {
         console.log(`Cache hit for raw content: ${cacheKey}`);
@@ -67,6 +67,7 @@ const getContent = (repo, path) => __awaiter(void 0, void 0, void 0, function* (
         owner: repo.owner,
         repo: repo.repo,
         path: path,
+        ref,
         headers: { accept: "application/vnd.github.raw+json" },
     });
     if (typeof response.data !== "string") {

@@ -21,7 +21,7 @@ type IOctokitTreeResponse = Awaited<
   ReturnType<OctokitType["rest"]["git"]["getTree"]>
 >;
 
-interface FrontMatterData {
+interface IFrontMatterData {
   title: string;
   description: string;
   nav: number;
@@ -33,7 +33,7 @@ type IGrayMatterFile<H> = GrayMatterFile<string> & {
 
 interface IContent {
   htmlContent: string;
-  matterContent: IGrayMatterFile<FrontMatterData>["data"];
+  matterContent: IGrayMatterFile<IFrontMatterData>["data"];
 }
 
 const cacheOptions = {
@@ -100,8 +100,13 @@ const getDocsTree = async (
   return data;
 };
 
-const getContent = async (repo: IRepo, path: string): Promise<IContent> => {
-  const cacheKey = stableStringify(repo) + "/getRawContent/" + path;
+const getContent = async (
+  repo: IRepo,
+  path: string,
+  ref?: string
+): Promise<IContent> => {
+  const cacheKey =
+    stableStringify(repo) + "/getRawContent/" + path + (ref ? "/" + ref : "");
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
     console.log(`Cache hit for raw content: ${cacheKey}`);
@@ -111,6 +116,7 @@ const getContent = async (repo: IRepo, path: string): Promise<IContent> => {
     owner: repo.owner,
     repo: repo.repo,
     path: path,
+    ref,
     headers: { accept: "application/vnd.github.raw+json" },
   });
   if (typeof response.data !== "string") {
@@ -118,7 +124,7 @@ const getContent = async (repo: IRepo, path: string): Promise<IContent> => {
   }
   const matterContent = matter(
     response.data
-  ) as IGrayMatterFile<FrontMatterData>;
+  ) as IGrayMatterFile<IFrontMatterData>;
   const processedContent = await remark()
     .use(html)
     .process(matterContent.content);
@@ -137,4 +143,6 @@ export type {
   IOctokitTagsResponse,
   IOctokitTreeResponse,
   IContent,
+  IGrayMatterFile,
+  IFrontMatterData,
 };
