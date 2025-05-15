@@ -20,10 +20,10 @@ function convertRelativeToAbsolutePaths(htmlString, baseUrl) {
             }
             absolutePath = `${urlParts.join("/")}/${pathToProcess}`;
         }
-        else {
+        else if (!path.startsWith("#")) {
             absolutePath = `${baseUrl}/${path}`;
         }
-        return match.replace(`${attr}="${path}"`, `${attr}="${absolutePath}"`);
+        return match.replace(`${attr}="${path}"`, `${attr}="${absolutePath || path}"`);
     });
 }
 export { convertRelativeToAbsolutePaths };

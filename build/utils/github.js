@@ -18,6 +18,8 @@ import rehypeRaw from "rehype-raw";
 import rehypeStringify from "rehype-stringify";
 import { unified } from "unified";
 import { convertRelativeToAbsolutePaths } from "./convert.js";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 const cacheOptions = {
     max: 100,
     ttl: 1000 * 60 * 60,
@@ -82,6 +84,13 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
         .use(remarkParse)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
+        .use(rehypeSlug)
+        .use(rehypeAutolinkHeadings, {
+        behavior: "wrap",
+        properties: {
+            className: ["anchor-link"],
+        },
+    })
         .use(rehypeStringify)
         .process(matterContent.content);
     const contentHtml = convertRelativeToAbsolutePaths(processedContent.toString(), checkedEnv.BASE_GITHUB_RAW_URL +

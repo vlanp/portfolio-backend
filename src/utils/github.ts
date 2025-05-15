@@ -11,6 +11,8 @@ import rehypeRaw from "rehype-raw";
 import rehypeStringify from "rehype-stringify";
 import { unified } from "unified";
 import { convertRelativeToAbsolutePaths } from "./convert.js";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -131,6 +133,13 @@ const getContent = async (
     .use(remarkParse)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
+    .use(rehypeSlug)
+    .use(rehypeAutolinkHeadings, {
+      behavior: "wrap",
+      properties: {
+        className: ["anchor-link"],
+      },
+    })
     .use(rehypeStringify)
     .process(matterContent.content);
   const contentHtml = convertRelativeToAbsolutePaths(
