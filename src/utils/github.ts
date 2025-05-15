@@ -5,9 +5,12 @@ import checkedEnv from "./checkEnv.js";
 import matter, { GrayMatterFile } from "gray-matter";
 import { LRUCache } from "lru-cache";
 import stableStringify from "json-stable-stringify";
-import { remark } from "remark";
-import html from "remark-html";
-import { get } from "mongoose";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeRaw from "rehype-raw";
+import rehypeStringify from "rehype-stringify";
+import { unified } from "unified";
+import { convertRelativeToAbsolutePaths } from "./convert.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -124,10 +127,24 @@ const getContent = async (
   const matterContent = matter(
     response.data
   ) as IGrayMatterFile<IFrontMatterData>;
-  const processedContent = await remark()
-    .use(html)
+  const processedContent = await unified()
+    .use(remarkParse)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    .use(rehypeStringify)
     .process(matterContent.content);
-  const contentHtml = processedContent.toString();
+  const contentHtml = convertRelativeToAbsolutePaths(
+    processedContent.toString(),
+    checkedEnv.BASE_GITHUB_RAW_URL +
+      "/" +
+      repo.owner +
+      "/" +
+      repo.repo +
+      "/" +
+      ref +
+      "/" +
+      path
+  );
   const content: IContent = {
     htmlContent: contentHtml,
     matterContent: matterContent.data,

@@ -1,3 +1,6 @@
 .env
 node_modules
 .DS_Store
+src/routes/someTest.ts
+build/routes/someTest.js
+build/routes/some-test.js

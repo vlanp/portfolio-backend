@@ -12,8 +12,12 @@ import checkedEnv from "./checkEnv.js";
 import matter from "gray-matter";
 import { LRUCache } from "lru-cache";
 import stableStringify from "json-stable-stringify";
-import { remark } from "remark";
-import html from "remark-html";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeRaw from "rehype-raw";
+import rehypeStringify from "rehype-stringify";
+import { unified } from "unified";
+import { convertRelativeToAbsolutePaths } from "./convert.js";
 const cacheOptions = {
     max: 100,
     ttl: 1000 * 60 * 60,
@@ -74,10 +78,21 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
         throw new Error("Content is not a string");
     }
     const matterContent = matter(response.data);
-    const processedContent = yield remark()
-        .use(html)
+    const processedContent = yield unified()
+        .use(remarkParse)
+        .use(remarkRehype, { allowDangerousHtml: true })
+        .use(rehypeRaw)
+        .use(rehypeStringify)
         .process(matterContent.content);
-    const contentHtml = processedContent.toString();
+    const contentHtml = convertRelativeToAbsolutePaths(processedContent.toString(), checkedEnv.BASE_GITHUB_RAW_URL +
+        "/" +
+        repo.owner +
+        "/" +
+        repo.repo +
+        "/" +
+        ref +
+        "/" +
+        path);
     const content = {
         htmlContent: contentHtml,
         matterContent: matterContent.data,
