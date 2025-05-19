@@ -14,6 +14,8 @@ import { convertRelativeToAbsolutePaths } from "./convert.js";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
+import { rehypeToc } from "./rehypeToc.js";
+import IDocToC from "../models/IDocToc.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -40,6 +42,7 @@ type IGrayMatterFile<H> = GrayMatterFile<string> & {
 interface IContent {
   htmlContent: string;
   matterContent: IGrayMatterFile<IFrontMatterData>["data"];
+  tableOfContents: IDocToC[];
 }
 
 const cacheOptions = {
@@ -130,6 +133,9 @@ const getContent = async (
   const matterContent = matter(
     response.data
   ) as IGrayMatterFile<IFrontMatterData>;
+
+  const tableOfContents: IDocToC[] = [];
+
   const processedContent = await unified()
     .use(remarkParse)
     .use(remarkRehype, { allowDangerousHtml: true })
@@ -142,6 +148,7 @@ const getContent = async (
         className: ["anchor-link"],
       },
     })
+    .use(rehypeToc(tableOfContents))
     .use(rehypeStringify)
     .process(matterContent.content);
   const contentHtml = convertRelativeToAbsolutePaths(
@@ -159,6 +166,7 @@ const getContent = async (
   const content: IContent = {
     htmlContent: contentHtml,
     matterContent: matterContent.data,
+    tableOfContents,
   };
   contentCache.set(cacheKey, content);
   return content;

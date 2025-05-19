@@ -21,6 +21,7 @@ import { convertRelativeToAbsolutePaths } from "./convert.js";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
+import { rehypeToc } from "./rehypeToc.js";
 const cacheOptions = {
     max: 100,
     ttl: 1000 * 60 * 60,
@@ -81,6 +82,7 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
         throw new Error("Content is not a string");
     }
     const matterContent = matter(response.data);
+    const tableOfContents = [];
     const processedContent = yield unified()
         .use(remarkParse)
         .use(remarkRehype, { allowDangerousHtml: true })
@@ -93,6 +95,7 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
             className: ["anchor-link"],
         },
     })
+        .use(rehypeToc(tableOfContents))
         .use(rehypeStringify)
         .process(matterContent.content);
     const contentHtml = convertRelativeToAbsolutePaths(processedContent.toString(), checkedEnv.BASE_GITHUB_RAW_URL +
@@ -107,6 +110,7 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
     const content = {
         htmlContent: contentHtml,
         matterContent: matterContent.data,
+        tableOfContents,
     };
     contentCache.set(cacheKey, content);
     return content;
