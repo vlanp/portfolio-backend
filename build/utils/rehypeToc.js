@@ -22,6 +22,22 @@ const toString = (node) => {
  */
 const slugify = (title) => title.toLowerCase().replace(/\s+|-+/g, "-");
 /**
+ * Extracts the ID attribute from a heading node.
+ * Falls back to slugify if ID is not present.
+ */
+const getNodeId = (node) => {
+    console.log(node);
+    if ("properties" in node &&
+        node.properties &&
+        typeof node.properties === "object" &&
+        "id" in node.properties &&
+        typeof node.properties.id === "string") {
+        return node.properties.id;
+    }
+    const title = toString(node);
+    return slugify(title);
+};
+/**
  * Generates a table of contents from page headings.
  */
 const isHeading = (node) => "tagName" in node &&
@@ -38,7 +54,7 @@ export const rehypeToc = (target = []) => {
             if (isHeading(node)) {
                 const level = parseInt(node.tagName[1]) - 1;
                 const title = toString(node);
-                const id = slugify(title);
+                const id = getNodeId(node);
                 //
                 // Extract content for each heading
                 //
