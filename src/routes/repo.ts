@@ -300,6 +300,30 @@ router.get("/repo/:repoid", async (req, res) => {
   }
 });
 
+router.get("/repo/:repoid/tags", async (req, res) => {
+  try {
+    const { repoid } = req.params;
+    if (!isValidObjectId(repoid)) {
+      res.status(400).json({
+        message: "Invalid repo id",
+      });
+      return;
+    }
+    const repo = await Repo.findById(repoid);
+    if (!repo) {
+      res.status(404).json({
+        message: "No repo found with id " + repoid,
+      });
+      return;
+    }
+    const tags = await getTags(repo);
+    res.status(200).json(tags);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
   try {
     const { repoid, filepath } = req.params;
