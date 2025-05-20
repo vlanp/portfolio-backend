@@ -22,6 +22,8 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
 import { rehypeToc } from "./rehypeToc.js";
+import remarkGfm from "remark-gfm";
+import remarkGithubAlerts from "remark-github-alerts";
 const cacheOptions = {
     max: 100,
     ttl: 1000 * 60 * 60,
@@ -85,6 +87,8 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
     const tableOfContents = [];
     const processedContent = yield unified()
         .use(remarkParse)
+        .use(remarkGfm)
+        .use(remarkGithubAlerts)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
         .use(rehypeSlug)

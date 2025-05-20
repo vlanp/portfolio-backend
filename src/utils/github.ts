@@ -16,6 +16,8 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
 import { rehypeToc } from "./rehypeToc.js";
 import IDocToC from "../models/IDocToc.js";
+import remarkGfm from "remark-gfm";
+import remarkGithubAlerts from "remark-github-alerts";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -138,6 +140,8 @@ const getContent = async (
 
   const processedContent = await unified()
     .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkGithubAlerts)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSlug)
