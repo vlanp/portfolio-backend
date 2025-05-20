@@ -120,7 +120,9 @@ router.get("/repo/:repoid/lastTag", async (req, res) => {
     const docsTree = await getDocsTree(repo, lastTag.commit.sha);
     const dirs = docsTree.tree.filter((item) => item.type === "tree");
     const files = docsTree.tree.filter(
-      (item) => item.type === "blob" && item.path.endsWith(".md")
+      (item) =>
+        item.type === "blob" &&
+        (item.path.endsWith(".md") || item.path.endsWith(".mdx"))
     );
     const filesContentsPromises = files.map(async (file) => {
       const fileContent = await getContent(repo, file.path, lastTag.commit.sha);
@@ -211,7 +213,9 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
     const docsTree = await getDocsTree(repo, tag.commit.sha);
     const dirs = docsTree.tree.filter((item) => item.type === "tree");
     const files = docsTree.tree.filter(
-      (item) => item.type === "blob" && item.path.endsWith(".md")
+      (item) =>
+        item.type === "blob" &&
+        (item.path.endsWith(".md") || item.path.endsWith(".mdx"))
     );
     const filesContentsPromises = files.map(async (file) => {
       const fileContent = await getContent(repo, file.path, tag.commit.sha);

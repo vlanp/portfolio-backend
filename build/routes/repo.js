@@ -121,7 +121,8 @@ router.get("/repo/:repoid/lastTag", (req, res) => __awaiter(void 0, void 0, void
         }
         const docsTree = yield getDocsTree(repo, lastTag.commit.sha);
         const dirs = docsTree.tree.filter((item) => item.type === "tree");
-        const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
+        const files = docsTree.tree.filter((item) => item.type === "blob" &&
+            (item.path.endsWith(".md") || item.path.endsWith(".mdx")));
         const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
             const fileContent = yield getContent(repo, file.path, lastTag.commit.sha);
             return { file, matterContent: fileContent.matterContent };
@@ -207,7 +208,8 @@ router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, voi
         }
         const docsTree = yield getDocsTree(repo, tag.commit.sha);
         const dirs = docsTree.tree.filter((item) => item.type === "tree");
-        const files = docsTree.tree.filter((item) => item.type === "blob" && item.path.endsWith(".md"));
+        const files = docsTree.tree.filter((item) => item.type === "blob" &&
+            (item.path.endsWith(".md") || item.path.endsWith(".mdx")));
         const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
             const fileContent = yield getContent(repo, file.path, tag.commit.sha);
             return { file, matterContent: fileContent.matterContent };
