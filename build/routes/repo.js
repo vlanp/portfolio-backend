@@ -95,96 +95,10 @@ router.get("/repos", (req, res) => __awaiter(void 0, void 0, void 0, function* (
         });
     }
 }));
-router.get("/repo/:repoid/lastTag", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { repoid } = req.params;
-        if (!isValidObjectId(repoid)) {
-            res.status(400).json({
-                message: "Invalid repo id",
-            });
-            return;
-        }
-        const repo = yield Repo.findById(repoid);
-        if (!repo) {
-            res.status(404).json({
-                message: "No repo found with id " + repoid,
-            });
-            return;
-        }
-        const tags = yield getTags(repo);
-        const lastTag = tags[0];
-        if (!lastTag) {
-            res.status(404).json({
-                message: "No tags found for this repo",
-            });
-            return;
-        }
-        const docsTree = yield getDocsTree(repo, lastTag.commit.sha);
-        const dirs = docsTree.tree.filter((item) => item.type === "tree");
-        const files = docsTree.tree.filter((item) => item.type === "blob" &&
-            (item.path.endsWith(".md") || item.path.endsWith(".mdx")));
-        const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
-            const fileContent = yield getContent(repo, file.path, lastTag.commit.sha);
-            return { file, matterContent: fileContent.matterContent };
-        }));
-        const filesContents = yield Promise.all(filesContentsPromises);
-        const lastTagContent = {
-            tag: lastTag,
-            orderedTags: tags,
-            orderedDirs: dirs
-                .map((dir) => {
-                const orderedFiles = filesContents
-                    .filter((fileContent) => {
-                    return (fileContent.file.path.split("/").slice(0, -1).join("/") ===
-                        dir.path);
-                })
-                    .sort((a, b) => {
-                    const navA = a.matterContent.nav;
-                    const navB = b.matterContent.nav;
-                    if (Number.isInteger(navA) && Number.isInteger(navB)) {
-                        return navA - navB;
-                    }
-                    if (Number.isInteger(navA)) {
-                        return -1;
-                    }
-                    if (Number.isInteger(navB)) {
-                        return 1;
-                    }
-                    return 0;
-                });
-                return {
-                    dir: dir,
-                    orderedFiles: orderedFiles,
-                };
-            })
-                .filter((dir) => dir.orderedFiles.length > 0)
-                .sort((a, b) => {
-                const navA = a.orderedFiles[0].matterContent.nav;
-                const navB = b.orderedFiles[0].matterContent.nav;
-                if (Number.isInteger(navA) && Number.isInteger(navB)) {
-                    return navA - navB;
-                }
-                if (Number.isInteger(navA)) {
-                    return -1;
-                }
-                if (Number.isInteger(navB)) {
-                    return 1;
-                }
-                return 0;
-            }),
-        };
-        res.status(200).json(lastTagContent);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({
-            message: "Internal server error",
-        });
-    }
-}));
 router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { repoid, sha } = req.params;
+        const { lang } = req.query;
         if (!isValidObjectId(repoid)) {
             res.status(400).json({
                 message: "Invalid repo id",
@@ -206,7 +120,7 @@ router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, voi
             });
             return;
         }
-        const docsTree = yield getDocsTree(repo, tag.commit.sha);
+        const docsTree = yield getDocsTree(repo, tag.commit.sha, typeof lang === "string" ? lang : undefined);
         const dirs = docsTree.tree.filter((item) => item.type === "tree");
         const files = docsTree.tree.filter((item) => item.type === "blob" &&
             (item.path.endsWith(".md") || item.path.endsWith(".mdx")));

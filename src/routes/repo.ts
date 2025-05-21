@@ -93,102 +93,10 @@ router.get("/repos", async (req, res) => {
   }
 });
 
-router.get("/repo/:repoid/lastTag", async (req, res) => {
-  try {
-    const { repoid } = req.params;
-    if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
-      return;
-    }
-    const repo = await Repo.findById(repoid);
-    if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
-      return;
-    }
-    const tags = await getTags(repo);
-    const lastTag = tags[0];
-    if (!lastTag) {
-      res.status(404).json({
-        message: "No tags found for this repo",
-      });
-      return;
-    }
-    const docsTree = await getDocsTree(repo, lastTag.commit.sha);
-    const dirs = docsTree.tree.filter((item) => item.type === "tree");
-    const files = docsTree.tree.filter(
-      (item) =>
-        item.type === "blob" &&
-        (item.path.endsWith(".md") || item.path.endsWith(".mdx"))
-    );
-    const filesContentsPromises = files.map(async (file) => {
-      const fileContent = await getContent(repo, file.path, lastTag.commit.sha);
-      return { file, matterContent: fileContent.matterContent };
-    });
-    const filesContents = await Promise.all(filesContentsPromises);
-    const lastTagContent: ITagContent = {
-      tag: lastTag,
-      orderedTags: tags,
-      orderedDirs: dirs
-        .map((dir) => {
-          const orderedFiles = filesContents
-            .filter((fileContent) => {
-              return (
-                fileContent.file.path.split("/").slice(0, -1).join("/") ===
-                dir.path
-              );
-            })
-            .sort((a, b) => {
-              const navA = a.matterContent.nav;
-              const navB = b.matterContent.nav;
-              if (Number.isInteger(navA) && Number.isInteger(navB)) {
-                return navA - navB;
-              }
-              if (Number.isInteger(navA)) {
-                return -1;
-              }
-              if (Number.isInteger(navB)) {
-                return 1;
-              }
-              return 0;
-            });
-          return {
-            dir: dir,
-            orderedFiles: orderedFiles,
-          };
-        })
-        .filter((dir) => dir.orderedFiles.length > 0)
-        .sort((a, b) => {
-          const navA = a.orderedFiles[0].matterContent.nav;
-          const navB = b.orderedFiles[0].matterContent.nav;
-          if (Number.isInteger(navA) && Number.isInteger(navB)) {
-            return navA - navB;
-          }
-          if (Number.isInteger(navA)) {
-            return -1;
-          }
-          if (Number.isInteger(navB)) {
-            return 1;
-          }
-          return 0;
-        }),
-    };
-
-    res.status(200).json(lastTagContent);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
-  }
-});
-
 router.get("/repo/:repoid/tag/:sha", async (req, res) => {
   try {
     const { repoid, sha } = req.params;
+    const { lang } = req.query;
     if (!isValidObjectId(repoid)) {
       res.status(400).json({
         message: "Invalid repo id",
@@ -210,7 +118,11 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
       });
       return;
     }
-    const docsTree = await getDocsTree(repo, tag.commit.sha);
+    const docsTree = await getDocsTree(
+      repo,
+      tag.commit.sha,
+      typeof lang === "string" ? lang : undefined
+    );
     const dirs = docsTree.tree.filter((item) => item.type === "tree");
     const files = docsTree.tree.filter(
       (item) =>

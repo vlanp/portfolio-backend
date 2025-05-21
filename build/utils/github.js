@@ -48,7 +48,7 @@ const getTags = (repo) => __awaiter(void 0, void 0, void 0, function* () {
     tagsCache.set(cacheKey, response.data);
     return response.data;
 });
-const getDocsTree = (repo, sha) => __awaiter(void 0, void 0, void 0, function* () {
+const getDocsTree = (repo, sha, langFolder) => __awaiter(void 0, void 0, void 0, function* () {
     const cacheKey = stableStringify(repo) + "/getTree/" + sha;
     const cachedResult = treeCache.get(cacheKey);
     if (cachedResult) {
@@ -61,7 +61,8 @@ const getDocsTree = (repo, sha) => __awaiter(void 0, void 0, void 0, function* (
         tree_sha: sha,
         recursive: "true",
     });
-    const docsItems = response.data.tree.filter((item) => item.path.startsWith("docs/") || item.path === "docs");
+    const docsItems = response.data.tree.filter((item) => item.path.startsWith("docs/" + (langFolder ? langFolder + "/" : "")) ||
+        item.path === ("docs" + langFolder ? "/" + langFolder : ""));
     const data = Object.assign(Object.assign({}, response.data), { tree: docsItems });
     treeCache.set(cacheKey, data);
     return data;

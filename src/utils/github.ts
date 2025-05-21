@@ -83,7 +83,8 @@ const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
 
 const getDocsTree = async (
   repo: IRepo,
-  sha: string
+  sha: string,
+  langFolder?: string | undefined
 ): Promise<IOctokitTreeResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTree/" + sha;
   const cachedResult = treeCache.get(cacheKey);
@@ -98,7 +99,9 @@ const getDocsTree = async (
     recursive: "true",
   });
   const docsItems = response.data.tree.filter(
-    (item) => item.path.startsWith("docs/") || item.path === "docs"
+    (item) =>
+      item.path.startsWith("docs/" + (langFolder ? langFolder + "/" : "")) ||
+      item.path === ("docs" + langFolder ? "/" + langFolder : "")
   );
 
   const data = {
