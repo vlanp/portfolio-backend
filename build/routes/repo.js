@@ -99,6 +99,12 @@ router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, voi
     try {
         const { repoid, sha } = req.params;
         const { lang } = req.query;
+        if (typeof lang !== "string") {
+            res.status(400).json({
+                message: "lang query params must be a string",
+            });
+            return;
+        }
         if (!isValidObjectId(repoid)) {
             res.status(400).json({
                 message: "Invalid repo id",
@@ -120,9 +126,14 @@ router.get("/repo/:repoid/tag/:sha", (req, res) => __awaiter(void 0, void 0, voi
             });
             return;
         }
-        const docsTree = yield getDocsTree(repo, tag.commit.sha, typeof lang === "string" ? lang : undefined);
-        const dirs = docsTree.tree.filter((item) => item.type === "tree");
-        const files = docsTree.tree.filter((item) => item.type === "blob" &&
+        const docsTree = yield getDocsTree(repo, tag.commit.sha);
+        let langTree = docsTree.tree.filter((item) => item.path.startsWith("docs/" + lang + "/") ||
+            item.path === "docs" + "/" + lang);
+        if (langTree.length === 0) {
+            langTree = docsTree.tree;
+        }
+        const dirs = langTree.filter((item) => item.type === "tree");
+        const files = langTree.filter((item) => item.type === "blob" &&
             (item.path.endsWith(".md") || item.path.endsWith(".mdx")));
         const filesContentsPromises = files.map((file) => __awaiter(void 0, void 0, void 0, function* () {
             const fileContent = yield getContent(repo, file.path, tag.commit.sha);
@@ -272,12 +283,19 @@ router.get("/repo/:repoid/fileContent/:filepath", (req, res) => __awaiter(void 0
     }
 }));
 router.get("/repo/:repoid/didFileExist/:filepath", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const { repoid, filepath } = req.params;
-        const { sha } = req.query;
+        const { sha, lang } = req.query;
         if (typeof sha !== "string") {
             res.status(400).json({
-                message: "ref query params must be a string",
+                message: "sha query params must be a string",
+            });
+            return;
+        }
+        if (typeof lang !== "string") {
+            res.status(400).json({
+                message: "lang query params must be a string",
             });
             return;
         }
@@ -295,12 +313,35 @@ router.get("/repo/:repoid/didFileExist/:filepath", (req, res) => __awaiter(void 
             return;
         }
         const docsTree = yield getDocsTree(repo, sha);
-        if (docsTree.tree.map((it) => it.path).includes(filepath)) {
+        const files = docsTree.tree.filter((item) => item.type === "blob" &&
+            (item.path.endsWith(".md") || item.path.endsWith(".mdx")));
+        const langFiles = files.filter((item) => item.path.startsWith("docs/" + lang + "/") ||
+            item.path === "docs" + "/" + lang);
+        if (langFiles.map((it) => it.path).includes(filepath)) {
             res.status(200).json({ exist: true });
+            return;
         }
-        else {
-            res.status(200).json({ exist: false });
+        else if (files.map((it) => it.path).includes(filepath)) {
+            const filesContents = yield Promise.all(files.map((it) => __awaiter(void 0, void 0, void 0, function* () {
+                return ({
+                    fileContent: yield getContent(repo, it.path, sha),
+                    path: it.path,
+                });
+            })));
+            const id = (_a = filesContents.find((it) => it.path === filepath)) === null || _a === void 0 ? void 0 : _a.fileContent.matterContent.id;
+            if (id) {
+                const langFilesContents = filesContents.filter((fileContent) => langFiles.map((it) => it.path).includes(fileContent.path));
+                const fileInLang = langFilesContents.find((it) => it.fileContent.matterContent.id === id);
+                if (fileInLang) {
+                    res.status(200).json({
+                        exist: true,
+                        filePath: fileInLang.path,
+                    });
+                    return;
+                }
+            }
         }
+        res.status(200).json({ exist: false });
     }
     catch (error) {
         console.error(error);

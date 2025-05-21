@@ -35,6 +35,7 @@ interface IFrontMatterData {
   title: string;
   description: string;
   nav: number;
+  id?: string | undefined;
 }
 
 type IGrayMatterFile<H> = GrayMatterFile<string> & {
@@ -68,7 +69,7 @@ const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTags";
   const cachedResult = tagsCache.get(cacheKey);
   if (cachedResult) {
-    console.log(`Cache hit for tags: ${cacheKey}`);
+    // console.log(`Cache hit for tags: ${cacheKey}`);
     return cachedResult;
   }
   const response = await octokit.rest.repos.listTags({
@@ -83,13 +84,12 @@ const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
 
 const getDocsTree = async (
   repo: IRepo,
-  sha: string,
-  langFolder?: string | undefined
+  sha: string
 ): Promise<IOctokitTreeResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTree/" + sha;
   const cachedResult = treeCache.get(cacheKey);
   if (cachedResult) {
-    console.log(`Cache hit for tree: ${cacheKey}`);
+    // console.log(`Cache hit for tree: ${cacheKey}`);
     return cachedResult;
   }
   const response = await octokit.rest.git.getTree({
@@ -99,11 +99,8 @@ const getDocsTree = async (
     recursive: "true",
   });
   const docsItems = response.data.tree.filter(
-    (item) =>
-      item.path.startsWith("docs/" + (langFolder ? langFolder + "/" : "")) ||
-      item.path === ("docs" + langFolder ? "/" + langFolder : "")
+    (item) => item.path.startsWith("docs/") || item.path === "docs"
   );
-
   const data = {
     ...response.data,
     tree: docsItems,
@@ -122,7 +119,7 @@ const getContent = async (
   const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
-    console.log(`Cache hit for raw content: ${cacheKey}`);
+    // console.log(`Cache hit for raw content: ${cacheKey}`);
     return cachedResult;
   }
   const response = await octokit.rest.repos.getContent({

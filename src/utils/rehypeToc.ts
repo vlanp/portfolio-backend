@@ -39,8 +39,6 @@ const slugify = (title: string) => title.toLowerCase().replace(/\s+|-+/g, "-");
  * Falls back to slugify if ID is not present.
  */
 const getNodeId = (node: Node): string => {
-  console.log(node);
-
   if (
     "properties" in node &&
     node.properties &&

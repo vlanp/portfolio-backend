@@ -38,7 +38,7 @@ const getTags = (repo) => __awaiter(void 0, void 0, void 0, function* () {
     const cacheKey = stableStringify(repo) + "/getTags";
     const cachedResult = tagsCache.get(cacheKey);
     if (cachedResult) {
-        console.log(`Cache hit for tags: ${cacheKey}`);
+        // console.log(`Cache hit for tags: ${cacheKey}`);
         return cachedResult;
     }
     const response = yield octokit.rest.repos.listTags({
@@ -48,11 +48,11 @@ const getTags = (repo) => __awaiter(void 0, void 0, void 0, function* () {
     tagsCache.set(cacheKey, response.data);
     return response.data;
 });
-const getDocsTree = (repo, sha, langFolder) => __awaiter(void 0, void 0, void 0, function* () {
+const getDocsTree = (repo, sha) => __awaiter(void 0, void 0, void 0, function* () {
     const cacheKey = stableStringify(repo) + "/getTree/" + sha;
     const cachedResult = treeCache.get(cacheKey);
     if (cachedResult) {
-        console.log(`Cache hit for tree: ${cacheKey}`);
+        // console.log(`Cache hit for tree: ${cacheKey}`);
         return cachedResult;
     }
     const response = yield octokit.rest.git.getTree({
@@ -61,8 +61,7 @@ const getDocsTree = (repo, sha, langFolder) => __awaiter(void 0, void 0, void 0,
         tree_sha: sha,
         recursive: "true",
     });
-    const docsItems = response.data.tree.filter((item) => item.path.startsWith("docs/" + (langFolder ? langFolder + "/" : "")) ||
-        item.path === ("docs" + langFolder ? "/" + langFolder : ""));
+    const docsItems = response.data.tree.filter((item) => item.path.startsWith("docs/") || item.path === "docs");
     const data = Object.assign(Object.assign({}, response.data), { tree: docsItems });
     treeCache.set(cacheKey, data);
     return data;
@@ -71,7 +70,7 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
     const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
     const cachedResult = contentCache.get(cacheKey);
     if (cachedResult) {
-        console.log(`Cache hit for raw content: ${cacheKey}`);
+        // console.log(`Cache hit for raw content: ${cacheKey}`);
         return cachedResult;
     }
     const response = yield octokit.rest.repos.getContent({
