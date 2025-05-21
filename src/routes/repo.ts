@@ -331,7 +331,12 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
         item.path.startsWith("docs/" + lang + "/") ||
         item.path === "docs" + "/" + lang
     );
-    if (langFiles.map((it) => it.path).includes(filepath)) {
+    if (langFiles.length === 0) {
+      if (files.map((it) => it.path).includes(filepath)) {
+        res.status(200).json({ exist: true });
+        return;
+      }
+    } else if (langFiles.map((it) => it.path).includes(filepath)) {
       res.status(200).json({ exist: true });
       return;
     } else if (files.map((it) => it.path).includes(filepath)) {
