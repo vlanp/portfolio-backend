@@ -1,13 +1,14 @@
 import express from "express";
-import { IRepo, Repo } from "../models/IRepo.js";
+import { IProject, Project, ZProject } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags } from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
 import { isValidObjectId } from "mongoose";
+import z, { ZodSafeParseResult } from "zod/v4";
 
 const router = express.Router();
 
-router.post("/repo", isAdmin, async (req, res) => {
+router.post("/project", isAdmin, async (req, res) => {
   try {
     if (!req.body) {
       res.status(400).json({
@@ -15,63 +16,39 @@ router.post("/repo", isAdmin, async (req, res) => {
       });
       return;
     }
-    const { displayName, owner, repo, path } = req.body;
-    if (!displayName || !owner || !repo || !path) {
+    const projectParseResult: ZodSafeParseResult<IProject> = ZProject.safeParse(
+      req.body
+    );
+    if (!projectParseResult.success) {
       res.status(400).json({
-        message: "Missing required fields",
-      });
-      return;
-    }
-    if (typeof displayName !== "string") {
-      res.status(400).json({
-        message: "displayName must be a string",
-      });
-      return;
-    }
-    if (typeof owner !== "string") {
-      res.status(400).json({
-        message: "owner must be a string",
-      });
-      return;
-    }
-    if (typeof repo !== "string") {
-      res.status(400).json({
-        message: "repo must be a string",
-      });
-      return;
-    }
-    if (typeof path !== "string") {
-      res.status(400).json({
-        message: "path must be a string",
+        message: z.prettifyError(projectParseResult.error),
       });
       return;
     }
 
-    const existingRepo = await Repo.findOne({
-      displayName,
-      owner,
-      repo,
-      path,
-    });
-    if (existingRepo) {
-      res.status(400).json({
-        message: "Repo already exists",
-      });
-      return;
-    }
+    const project: IProject = projectParseResult.data;
 
-    const newRepo = new Repo<IRepo>({
-      displayName,
-      owner,
-      repo,
-      path,
+    const existingRepos = await Project.find({
+      $or: project.repos.map((repo) => ({
+        "repos.owner": repo.owner,
+        "repos.repo": repo.repo,
+      })),
     });
 
-    const createdRepo = await newRepo.save();
+    if (existingRepos.length > 0) {
+      res.status(400).json({
+        message: "One or more Repos already exists",
+      });
+      return;
+    }
+
+    const newProject = new Project<IProject>(project);
+
+    const addedProject = await newProject.save();
 
     res.status(201).json({
-      message: "Repo added successfully into the database",
-      repo: createdRepo,
+      message: "Project added successfully into the database",
+      repo: addedProject,
     });
   } catch (error) {
     console.error(error);
@@ -81,10 +58,10 @@ router.post("/repo", isAdmin, async (req, res) => {
   }
 });
 
-router.get("/repos", async (req, res) => {
+router.get("/projects", async (req, res) => {
   try {
-    const repos = await Repo.find();
-    res.status(200).json(repos);
+    const projects = await Project.find();
+    res.status(200).json(projects);
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -110,7 +87,15 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
       });
       return;
     }
-    const repo = await Repo.findById(repoid);
+    const repo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
     if (!repo) {
       res.status(404).json({
         message: "No repo found with id " + repoid,
@@ -211,7 +196,15 @@ router.get("/repo/:repoid", async (req, res) => {
       });
       return;
     }
-    const repo = await Repo.findById(repoid);
+    const repo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
     if (!repo) {
       res.status(404).json({
         message: "No repo found with id " + repoid,
@@ -236,7 +229,15 @@ router.get("/repo/:repoid/tags", async (req, res) => {
       });
       return;
     }
-    const repo = await Repo.findById(repoid);
+    const repo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
     if (!repo) {
       res.status(404).json({
         message: "No repo found with id " + repoid,
@@ -267,7 +268,15 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
       });
       return;
     }
-    const repo = await Repo.findById(repoid);
+    const repo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
     if (!repo) {
       res.status(404).json({
         message: "No repo found with id " + repoid,
@@ -313,7 +322,15 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
       });
       return;
     }
-    const repo = await Repo.findById(repoid);
+    const repo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
     if (!repo) {
       res.status(404).json({
         message: "No repo found with id " + repoid,

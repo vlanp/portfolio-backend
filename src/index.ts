@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import checkedEnv from "./utils/checkEnv.js";
-import repoRouter from "./routes/repo.js";
+import projectRouter from "./routes/project.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 
@@ -13,7 +13,7 @@ app.use(cors());
 
 app.use(express.json());
 
-app.use(repoRouter);
+app.use(projectRouter);
 
 // app.use(testRouter);
 

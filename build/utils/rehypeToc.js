@@ -44,7 +44,6 @@ const isHeading = (node) => "tagName" in node &&
     /^h[1-6]$/.test(node.tagName);
 export const rehypeToc = (target = []) => {
     return () => (root) => {
-        var _a;
         const previous = {};
         if (!isParentNode(root))
             return;
@@ -72,7 +71,7 @@ export const rehypeToc = (target = []) => {
                     url: `#${id}`,
                     title,
                     content: content.join(""),
-                    parent: (_a = previous[level - 2]) !== null && _a !== void 0 ? _a : null,
+                    parent: previous[level - 2] ?? null,
                 };
                 previous[level - 1] = item;
                 target.push(item);

@@ -1,8 +1,12 @@
 {
   "extends": "@tsconfig/node12/tsconfig.json",
   "compilerOptions": {
-    "target": "es2015",
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "preserveConstEnums": true,
-    "outDir": "build"
+    "outDir": "build",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
   }
 }

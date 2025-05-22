@@ -21,10 +21,15 @@ router.post("/project", isAdmin, async (req, res) => {
             return;
         }
         const project = projectParseResult.data;
-        const isProjectExisting = await Project.findOne(project);
-        if (isProjectExisting) {
+        const existingRepos = await Project.find({
+            $or: project.repos.map((repo) => ({
+                "repos.owner": repo.owner,
+                "repos.repo": repo.repo,
+            })),
+        });
+        if (existingRepos.length > 0) {
             res.status(400).json({
-                message: "Repo already exists",
+                message: "One or more Repos already exists",
             });
             return;
         }
@@ -70,7 +75,10 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
             });
             return;
         }
-        const repo = await Repo.findById(repoid);
+        const repo = (await Project.findOne({ "repos._id": repoid }, {
+            "repos.$": 1,
+            _id: 0,
+        }))?.repos[0];
         if (!repo) {
             res.status(404).json({
                 message: "No repo found with id " + repoid,
@@ -162,7 +170,10 @@ router.get("/repo/:repoid", async (req, res) => {
             });
             return;
         }
-        const repo = await Repo.findById(repoid);
+        const repo = (await Project.findOne({ "repos._id": repoid }, {
+            "repos.$": 1,
+            _id: 0,
+        }))?.repos[0];
         if (!repo) {
             res.status(404).json({
                 message: "No repo found with id " + repoid,
@@ -187,7 +198,10 @@ router.get("/repo/:repoid/tags", async (req, res) => {
             });
             return;
         }
-        const repo = await Repo.findById(repoid);
+        const repo = (await Project.findOne({ "repos._id": repoid }, {
+            "repos.$": 1,
+            _id: 0,
+        }))?.repos[0];
         if (!repo) {
             res.status(404).json({
                 message: "No repo found with id " + repoid,
@@ -218,7 +232,10 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
             });
             return;
         }
-        const repo = await Repo.findById(repoid);
+        const repo = (await Project.findOne({ "repos._id": repoid }, {
+            "repos.$": 1,
+            _id: 0,
+        }))?.repos[0];
         if (!repo) {
             res.status(404).json({
                 message: "No repo found with id " + repoid,
@@ -263,7 +280,10 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
             });
             return;
         }
-        const repo = await Repo.findById(repoid);
+        const repo = (await Project.findOne({ "repos._id": repoid }, {
+            "repos.$": 1,
+            _id: 0,
+        }))?.repos[0];
         if (!repo) {
             res.status(404).json({
                 message: "No repo found with id " + repoid,

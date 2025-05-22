@@ -1,14 +1,14 @@
 import express from "express";
 import mongoose from "mongoose";
 import checkedEnv from "./utils/checkEnv.js";
-import repoRouter from "./routes/repo.js";
+import projectRouter from "./routes/project.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 mongoose.connect(checkedEnv.MONGODB_LOCAL_URI);
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(repoRouter);
+app.use(projectRouter);
 // app.use(testRouter);
 app.all("/*all", (req, res) => {
     res.status(404).json({

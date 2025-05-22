@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { Octokit } from "octokit";
 import checkedEnv from "./checkEnv.js";
 import matter from "gray-matter";
@@ -34,46 +25,49 @@ const contentCache = new LRUCache(cacheOptions);
 const octokit = new Octokit({
     auth: checkedEnv.GITHUB_READ_TOKEN,
 });
-const getTags = (repo) => __awaiter(void 0, void 0, void 0, function* () {
+const getTags = async (repo) => {
     const cacheKey = stableStringify(repo) + "/getTags";
     const cachedResult = tagsCache.get(cacheKey);
     if (cachedResult) {
         // console.log(`Cache hit for tags: ${cacheKey}`);
         return cachedResult;
     }
-    const response = yield octokit.rest.repos.listTags({
+    const response = await octokit.rest.repos.listTags({
         owner: repo.owner,
         repo: repo.repo,
     });
     tagsCache.set(cacheKey, response.data);
     return response.data;
-});
-const getDocsTree = (repo, sha) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const getDocsTree = async (repo, sha) => {
     const cacheKey = stableStringify(repo) + "/getTree/" + sha;
     const cachedResult = treeCache.get(cacheKey);
     if (cachedResult) {
         // console.log(`Cache hit for tree: ${cacheKey}`);
         return cachedResult;
     }
-    const response = yield octokit.rest.git.getTree({
+    const response = await octokit.rest.git.getTree({
         owner: repo.owner,
         repo: repo.repo,
         tree_sha: sha,
         recursive: "true",
     });
     const docsItems = response.data.tree.filter((item) => item.path.startsWith("docs/") || item.path === "docs");
-    const data = Object.assign(Object.assign({}, response.data), { tree: docsItems });
+    const data = {
+        ...response.data,
+        tree: docsItems,
+    };
     treeCache.set(cacheKey, data);
     return data;
-});
-const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const getContent = async (repo, path, ref) => {
     const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
     const cachedResult = contentCache.get(cacheKey);
     if (cachedResult) {
         // console.log(`Cache hit for raw content: ${cacheKey}`);
         return cachedResult;
     }
-    const response = yield octokit.rest.repos.getContent({
+    const response = await octokit.rest.repos.getContent({
         owner: repo.owner,
         repo: repo.repo,
         path: path,
@@ -85,7 +79,7 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
     }
     const matterContent = matter(response.data);
     const tableOfContents = [];
-    const processedContent = yield unified()
+    const processedContent = await unified()
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkGithubAlerts)
@@ -118,5 +112,5 @@ const getContent = (repo, path, ref) => __awaiter(void 0, void 0, void 0, functi
     };
     contentCache.set(cacheKey, content);
     return content;
-});
+};
 export { getTags, getDocsTree, getContent };

@@ -1,6 +1,5 @@
 import { Octokit } from "octokit";
 import type { Octokit as OctokitType } from "octokit";
-import { IRepo } from "../models/IRepo.js";
 import checkedEnv from "./checkEnv.js";
 import matter, { GrayMatterFile } from "gray-matter";
 import { LRUCache } from "lru-cache";
@@ -18,6 +17,7 @@ import { rehypeToc } from "./rehypeToc.js";
 import IDocToC from "../models/IDocToc.js";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
+import { IRepo } from "../models/IRepo.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
