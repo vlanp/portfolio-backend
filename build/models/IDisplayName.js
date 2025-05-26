@@ -19,7 +19,7 @@ const DisplayNameSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: Object.values(ZERepoTypes.enum),
+        enum: ZERepoTypes.options,
         required: true,
     },
 }, { _id: false });

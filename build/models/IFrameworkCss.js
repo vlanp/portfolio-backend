@@ -1,6 +1,10 @@
 import { z } from "zod/v4";
-const frameworksCSS = {
-    TAILWIND_CSS: "Tailwind CSS",
+const ZEFrameworksCSSIn = z.enum(["TAILWIND_CSS"]);
+const frameworksCSSMapping = {
+    TAILWIND_CSS: {
+        name: "Tailwind CSS",
+        iconName: "SiTailwindcss",
+        color: "#06B6D4",
+    },
 };
-const ZEFrameworksCSS = z.enum(frameworksCSS);
-export { ZEFrameworksCSS };
+export { frameworksCSSMapping, ZEFrameworksCSSIn };

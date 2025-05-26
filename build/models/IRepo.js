@@ -1,28 +1,37 @@
 import { z } from "zod/v4";
 import { DisplayNameSchema, ZDisplayName } from "./IDisplayName.js";
-import { ZEFrameworksCSS } from "./IFrameworkCSS.js";
-import { ZEFrameworksJavascript } from "./IFrameworkJavascript.js";
-import { ZEFrameworksKotlin } from "./IFrameworkKotlin.js";
-import { ZEFrameworksPython } from "./IFrameworkPython.js";
-import { ZEPlatforms } from "./IPlatform.js";
-import { ZEProgrammingLanguages } from "./IProgrammingLanguage.js";
+import { programmingLanguagesMapping, ZEProgrammingLanguagesIn, } from "./IProgrammingLanguage.js";
 import { RepoDescriptionSchema, ZRepoDescription } from "./IRepoDescription.js";
 import mongoose from "mongoose";
-const ZRepo = z.object({
+import { frameworksCSSMapping, ZEFrameworksCSSIn } from "./IFrameworkCSS.js";
+import { frameworksJavascriptMapping, ZEFrameworksJavascriptIn, } from "./IFrameworkJavascript.js";
+import { frameworksKotlinMapping, ZEFrameworksKotlinIn, } from "./IFrameworkKotlin.js";
+import { frameworksPythonMapping, ZEFrameworksPythonIn, } from "./IFrameworkPython.js";
+import { platformsMapping, ZEPlatformsIn } from "./IPlatform.js";
+const ZRepoIn = z.object({
     displayName: ZDisplayName,
     owner: z.string(),
     repo: z.string(),
     path: z.string(),
     description: ZRepoDescription,
-    languages: z.array(ZEProgrammingLanguages),
-    frameworksJavascript: z.array(ZEFrameworksJavascript).optional(),
-    frameworksKotlin: z.array(ZEFrameworksKotlin).optional(),
-    frameworksPython: z.array(ZEFrameworksPython).optional(),
-    frameworksCSS: z.array(ZEFrameworksCSS).optional(),
-    platforms: z.array(ZEPlatforms),
+    programmingLanguages: z.array(ZEProgrammingLanguagesIn),
+    frameworksJavascript: z.array(ZEFrameworksJavascriptIn).optional(),
+    frameworksKotlin: z.array(ZEFrameworksKotlinIn).optional(),
+    frameworksPython: z.array(ZEFrameworksPythonIn).optional(),
+    frameworksCSS: z.array(ZEFrameworksCSSIn).optional(),
+    platforms: z.array(ZEPlatformsIn),
     youtube: z.string(),
     github: z.string(),
 });
+const ZRepoOut = ZRepoIn.transform((repo) => ({
+    ...repo,
+    programmingLanguages: repo.programmingLanguages.map((language) => programmingLanguagesMapping[language]),
+    frameworksJavascript: repo.frameworksJavascript?.map((framework) => frameworksJavascriptMapping[framework]),
+    frameworksKotlin: repo.frameworksKotlin?.map((framework) => frameworksKotlinMapping[framework]),
+    frameworksPython: repo.frameworksPython?.map((framework) => frameworksPythonMapping[framework]),
+    frameworksCSS: repo.frameworksCSS?.map((framework) => frameworksCSSMapping[framework]),
+    platforms: repo.platforms.map((platform) => platformsMapping[platform]),
+}));
 const RepoSchema = new mongoose.Schema({
     displayName: {
         type: DisplayNameSchema,
@@ -44,41 +53,41 @@ const RepoSchema = new mongoose.Schema({
         type: RepoDescriptionSchema,
         required: true,
     },
-    languages: [
+    programmingLanguages: [
         {
             type: String,
-            enum: Object.values(ZEProgrammingLanguages.enum),
+            enum: ZEProgrammingLanguagesIn.options,
             required: true,
         },
     ],
     frameworksJavascript: [
         {
             type: String,
-            enum: Object.values(ZEFrameworksJavascript.enum),
+            enum: ZEFrameworksJavascriptIn.options,
         },
     ],
     frameworksKotlin: [
         {
             type: String,
-            enum: Object.values(ZEFrameworksKotlin.enum),
+            enum: ZEFrameworksKotlinIn.options,
         },
     ],
     frameworksPython: [
         {
             type: String,
-            enum: Object.values(ZEFrameworksPython.enum),
+            enum: ZEFrameworksPythonIn.options,
         },
     ],
     frameworksCSS: [
         {
             type: String,
-            enum: Object.values(ZEFrameworksCSS.enum),
+            enum: ZEFrameworksCSSIn.options,
         },
     ],
     platforms: [
         {
             type: String,
-            enum: Object.values(ZEPlatforms.enum),
+            enum: ZEPlatformsIn.options,
             required: true,
         },
     ],
@@ -90,5 +99,8 @@ const RepoSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-});
-export { ZRepo, RepoSchema };
+    _id: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
+}, { _id: true });
+export { ZRepoIn, ZRepoOut, RepoSchema };

@@ -1,7 +1,15 @@
 import { z } from "zod/v4";
-const frameworksPython = {
-    DJANGO: "Django",
-    FASTAPI: "FastAPI",
+const ZEFrameworksPythonIn = z.enum(["DJANGO", "FASTAPI"]);
+const frameworksPythonMapping = {
+    DJANGO: {
+        name: "Django",
+        iconName: "SiDjango",
+        color: "#092E20",
+    },
+    FASTAPI: {
+        name: "FastAPI",
+        iconName: "SiFastapi",
+        color: "#009688",
+    },
 };
-const ZEFrameworksPython = z.enum(frameworksPython);
-export { ZEFrameworksPython };
+export { ZEFrameworksPythonIn, frameworksPythonMapping };

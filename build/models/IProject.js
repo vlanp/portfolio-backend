@@ -1,9 +1,14 @@
 import mongoose from "mongoose";
-import { RepoSchema, ZRepo } from "./IRepo.js";
+import { RepoSchema, ZRepoIn, ZRepoOut } from "./IRepo.js";
 import z from "zod/v4";
-const ZProject = z.object({
+const ZProjectIn = z.object({
     name: z.string(),
-    repos: z.array(ZRepo),
+    repos: z.array(ZRepoIn),
+    isFullStack: z.boolean(),
+});
+const ZProjectOut = z.object({
+    name: z.string(),
+    repos: z.array(ZRepoOut),
     isFullStack: z.boolean(),
 });
 const ProjectSchema = new mongoose.Schema({
@@ -21,6 +26,7 @@ const ProjectSchema = new mongoose.Schema({
     },
 }, {
     timestamps: true,
+    _id: true,
 });
 const Project = mongoose.model("Project", ProjectSchema);
-export { Project, ProjectSchema, ZProject };
+export { Project, ProjectSchema, ZProjectIn, ZProjectOut };

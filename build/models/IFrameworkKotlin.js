@@ -1,6 +1,10 @@
 import { z } from "zod/v4";
-const frameworksKotlin = {
-    JETPACK_COMPOSE: "Jetpack Compose",
+const ZEFrameworksKotlinIn = z.enum(["JETPACK_COMPOSE"]);
+const frameworksKotlinMapping = {
+    JETPACK_COMPOSE: {
+        name: "Jetpack Compose",
+        iconName: "SiJetpackcompose",
+        color: "#4285F4",
+    },
 };
-const ZEFrameworksKotlin = z.enum(frameworksKotlin);
-export { ZEFrameworksKotlin };
+export { ZEFrameworksKotlinIn, frameworksKotlinMapping };

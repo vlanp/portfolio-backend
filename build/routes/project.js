@@ -1,5 +1,5 @@
 import express from "express";
-import { Project, ZProject } from "../models/IProject.js";
+import { Project, ZProjectIn, } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags } from "../utils/github.js";
 import { isValidObjectId } from "mongoose";
@@ -13,16 +13,16 @@ router.post("/project", isAdmin, async (req, res) => {
             });
             return;
         }
-        const projectParseResult = ZProject.safeParse(req.body);
-        if (!projectParseResult.success) {
+        const projectInParseResult = ZProjectIn.safeParse(req.body);
+        if (!projectInParseResult.success) {
             res.status(400).json({
-                message: z.prettifyError(projectParseResult.error),
+                message: z.prettifyError(projectInParseResult.error),
             });
             return;
         }
-        const project = projectParseResult.data;
+        const projectIn = projectInParseResult.data;
         const existingRepos = await Project.find({
-            $or: project.repos.map((repo) => ({
+            $or: projectIn.repos.map((repo) => ({
                 "repos.owner": repo.owner,
                 "repos.repo": repo.repo,
             })),
@@ -33,11 +33,11 @@ router.post("/project", isAdmin, async (req, res) => {
             });
             return;
         }
-        const newProject = new Project(project);
-        const addedProject = await newProject.save();
+        const newProjectIn = new Project(projectIn);
+        const addedProjectIn = await newProjectIn.save();
         res.status(201).json({
             message: "Project added successfully into the database",
-            repo: addedProject,
+            repo: addedProjectIn,
         });
     }
     catch (error) {
@@ -49,8 +49,12 @@ router.post("/project", isAdmin, async (req, res) => {
 });
 router.get("/projects", async (req, res) => {
     try {
-        const projects = await Project.find();
-        res.status(200).json(projects);
+        const projectsIn = await Project.find().lean();
+        console.log(projectsIn[0].repos[0].id);
+        // const projectsOut: HydratedDocument<IProjectOut>[] = projectsIn.res
+        //   .status(200)
+        //   .json(projects);
+        res.status(200).json({ message: "yo" });
     }
     catch (error) {
         console.error(error);

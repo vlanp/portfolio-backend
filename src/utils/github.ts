@@ -17,7 +17,7 @@ import { rehypeToc } from "./rehypeToc.js";
 import IDocToC from "../models/IDocToc.js";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
-import { IRepo } from "../models/IRepo.js";
+import { IRepoOut } from "../models/IRepo.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -65,7 +65,9 @@ const octokit = new Octokit({
   auth: checkedEnv.GITHUB_READ_TOKEN,
 });
 
-const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
+const getTags = async (
+  repo: IRepoOut
+): Promise<IOctokitTagsResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTags";
   const cachedResult = tagsCache.get(cacheKey);
   if (cachedResult) {
@@ -83,7 +85,7 @@ const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
 };
 
 const getDocsTree = async (
-  repo: IRepo,
+  repo: IRepoOut,
   sha: string
 ): Promise<IOctokitTreeResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTree/" + sha;
@@ -112,7 +114,7 @@ const getDocsTree = async (
 };
 
 const getContent = async (
-  repo: IRepo,
+  repo: IRepoOut,
   path: string,
   ref: string
 ): Promise<IContent> => {

@@ -1,15 +1,53 @@
 import { z } from "zod/v4";
+import ICheckOut from "./ICheckOut";
 
-const platforms = {
-  WINDOWS: "Windows",
-  MACOS: "macOS",
-  LINUX: "Linux",
-  ANDROID: "Android",
-  IOS: "iOS",
-  WEB: "Web",
-} as const;
-const ZEPlatforms = z.enum(platforms);
-type IPlatform = z.infer<typeof ZEPlatforms>;
+const ZEPlatformsIn = z.enum([
+  "WINDOWS",
+  "MACOS",
+  "LINUX",
+  "ANDROID",
+  "IOS",
+  "WEB",
+]);
 
-export type { IPlatform };
-export { ZEPlatforms };
+type IPlatformIn = z.infer<typeof ZEPlatformsIn>;
+
+const platformsMapping = {
+  WINDOWS: {
+    name: "Windows",
+    iconName: "FaWindows",
+    color: "#000000",
+  },
+  MACOS: {
+    name: "macOS",
+    iconName: "SiMacos",
+    color: "#000000",
+  },
+  LINUX: {
+    name: "Linux",
+    iconName: "SiLinux",
+    color: "#FCC624",
+  },
+  ANDROID: {
+    name: "Android",
+    iconName: "SiAndroid",
+    color: "#3DDC84",
+  },
+  IOS: {
+    name: "iOS",
+    iconName: "SiIos",
+    color: "#000000",
+  },
+  WEB: {
+    name: "Web",
+    iconName: "SiMdnwebdocs",
+    color: "#000000",
+  },
+} as const satisfies Record<IPlatformIn, ICheckOut>;
+
+type IPlatformsMapping = typeof platformsMapping;
+
+type IPlaformOut = IPlatformsMapping[IPlatformIn];
+
+export type { IPlatformIn, IPlatformsMapping, IPlaformOut };
+export { ZEPlatformsIn, platformsMapping };

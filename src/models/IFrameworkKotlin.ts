@@ -1,10 +1,25 @@
 import { z } from "zod/v4";
+import ICheckOut from "./ICheckOut";
 
-const frameworksKotlin = {
-  JETPACK_COMPOSE: "Jetpack Compose",
-} as const;
-const ZEFrameworksKotlin = z.enum(frameworksKotlin);
-type IFrameworkKotlin = z.infer<typeof ZEFrameworksKotlin>;
+const ZEFrameworksKotlinIn = z.enum(["JETPACK_COMPOSE"]);
 
-export type { IFrameworkKotlin };
-export { ZEFrameworksKotlin };
+type IFrameworkKotlinIn = z.infer<typeof ZEFrameworksKotlinIn>;
+
+const frameworksKotlinMapping = {
+  JETPACK_COMPOSE: {
+    name: "Jetpack Compose",
+    iconName: "SiJetpackcompose",
+    color: "#4285F4",
+  },
+} as const satisfies Record<IFrameworkKotlinIn, ICheckOut>;
+
+type IFrameworksKotlinMapping = typeof frameworksKotlinMapping;
+
+type IFrameworkKotlinOut = IFrameworksKotlinMapping[IFrameworkKotlinIn];
+
+export type {
+  IFrameworkKotlinIn,
+  IFrameworksKotlinMapping,
+  IFrameworkKotlinOut,
+};
+export { ZEFrameworksKotlinIn, frameworksKotlinMapping };

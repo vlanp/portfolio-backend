@@ -27,7 +27,7 @@ const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
     },
     type: {
       type: String,
-      enum: Object.values(ZERepoTypes.enum),
+      enum: ZERepoTypes.options,
       required: true,
     },
   },

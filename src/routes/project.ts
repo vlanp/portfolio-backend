@@ -1,9 +1,14 @@
 import express from "express";
-import { IProject, Project, ZProject } from "../models/IProject.js";
+import {
+  IProjectIn,
+  IProjectOut,
+  Project,
+  ZProjectIn,
+} from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags } from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
-import { isValidObjectId } from "mongoose";
+import { FlattenMaps, HydratedDocument, isValidObjectId } from "mongoose";
 import z, { ZodSafeParseResult } from "zod/v4";
 
 const router = express.Router();
@@ -16,20 +21,19 @@ router.post("/project", isAdmin, async (req, res) => {
       });
       return;
     }
-    const projectParseResult: ZodSafeParseResult<IProject> = ZProject.safeParse(
-      req.body
-    );
-    if (!projectParseResult.success) {
+    const projectInParseResult: ZodSafeParseResult<IProjectIn> =
+      ZProjectIn.safeParse(req.body);
+    if (!projectInParseResult.success) {
       res.status(400).json({
-        message: z.prettifyError(projectParseResult.error),
+        message: z.prettifyError(projectInParseResult.error),
       });
       return;
     }
 
-    const project: IProject = projectParseResult.data;
+    const projectIn: IProjectIn = projectInParseResult.data;
 
     const existingRepos = await Project.find({
-      $or: project.repos.map((repo) => ({
+      $or: projectIn.repos.map((repo) => ({
         "repos.owner": repo.owner,
         "repos.repo": repo.repo,
       })),
@@ -42,13 +46,13 @@ router.post("/project", isAdmin, async (req, res) => {
       return;
     }
 
-    const newProject = new Project<IProject>(project);
+    const newProjectIn = new Project<IProjectIn>(projectIn);
 
-    const addedProject = await newProject.save();
+    const addedProjectIn = await newProjectIn.save();
 
     res.status(201).json({
       message: "Project added successfully into the database",
-      repo: addedProject,
+      repo: addedProjectIn,
     });
   } catch (error) {
     console.error(error);
@@ -60,8 +64,12 @@ router.post("/project", isAdmin, async (req, res) => {
 
 router.get("/projects", async (req, res) => {
   try {
-    const projects = await Project.find();
-    res.status(200).json(projects);
+    const projectsIn = await Project.find().lean();
+    console.log(projectsIn[0].repos[0].id);
+    // const projectsOut: HydratedDocument<IProjectOut>[] = projectsIn.res
+    //   .status(200)
+    //   .json(projects);
+    res.status(200).json({ message: "yo" });
   } catch (error) {
     console.error(error);
     res.status(500).json({
