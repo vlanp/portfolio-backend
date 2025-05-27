@@ -1,14 +1,9 @@
 import express from "express";
-import {
-  IProjectIn,
-  IProjectOut,
-  Project,
-  ZProjectIn,
-} from "../models/IProject.js";
+import { IProjectIn, Project, ZProjectIn } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags } from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
-import { FlattenMaps, HydratedDocument, isValidObjectId } from "mongoose";
+import { isValidObjectId } from "mongoose";
 import z, { ZodSafeParseResult } from "zod/v4";
 
 const router = express.Router();
@@ -46,9 +41,9 @@ router.post("/project", isAdmin, async (req, res) => {
       return;
     }
 
-    const newProjectIn = new Project<IProjectIn>(projectIn);
+    const newDbProject = new Project<IProjectIn>(projectIn);
 
-    const addedProjectIn = await newProjectIn.save();
+    const addedProjectIn = await newDbProject.save();
 
     res.status(201).json({
       message: "Project added successfully into the database",
@@ -65,7 +60,7 @@ router.post("/project", isAdmin, async (req, res) => {
 router.get("/projects", async (req, res) => {
   try {
     const projectsIn = await Project.find().lean();
-    console.log(projectsIn[0].repos[0].id);
+    console.log(projectsIn[0].repos[0]._id);
     // const projectsOut: HydratedDocument<IProjectOut>[] = projectsIn.res
     //   .status(200)
     //   .json(projects);

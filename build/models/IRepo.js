@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { DisplayNameSchema, ZDisplayName } from "./IDisplayName.js";
 import { programmingLanguagesMapping, ZEProgrammingLanguagesIn, } from "./IProgrammingLanguage.js";
 import { RepoDescriptionSchema, ZRepoDescription } from "./IRepoDescription.js";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { frameworksCSSMapping, ZEFrameworksCSSIn } from "./IFrameworkCSS.js";
 import { frameworksJavascriptMapping, ZEFrameworksJavascriptIn, } from "./IFrameworkJavascript.js";
 import { frameworksKotlinMapping, ZEFrameworksKotlinIn, } from "./IFrameworkKotlin.js";
@@ -23,7 +23,10 @@ const ZRepoIn = z.object({
     youtube: z.string(),
     github: z.string(),
 });
-const ZRepoOut = ZRepoIn.transform((repo) => ({
+const ZDbRepo = ZRepoIn.extend({
+    _id: z.instanceof(Types.ObjectId),
+});
+const ZRepoOut = ZDbRepo.transform((repo) => ({
     ...repo,
     programmingLanguages: repo.programmingLanguages.map((language) => programmingLanguagesMapping[language]),
     frameworksJavascript: repo.frameworksJavascript?.map((framework) => frameworksJavascriptMapping[framework]),
@@ -99,8 +102,5 @@ const RepoSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    _id: {
-        type: mongoose.Schema.Types.ObjectId,
-    },
 }, { _id: true });
-export { ZRepoIn, ZRepoOut, RepoSchema };
+export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo };

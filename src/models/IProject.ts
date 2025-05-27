@@ -4,7 +4,7 @@ import mongoose, {
   Model,
   Types,
 } from "mongoose";
-import { IDBRepoIn, RepoSchema, ZRepoIn, ZRepoOut } from "./IRepo.js";
+import { IDbRepo, RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut } from "./IRepo.js";
 import z from "zod/v4";
 
 const ZProjectIn = z.object({
@@ -15,29 +15,30 @@ const ZProjectIn = z.object({
 
 type IProjectIn = z.infer<typeof ZProjectIn>;
 
-type IDBProjectIn = IProjectIn & {
-  _id: Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-  __v: number;
-};
+const ZDbProject = ZProjectIn.extend({
+  _id: z.instanceof(Types.ObjectId),
+  createdAt: z.instanceof(Date),
+  updatedAt: z.instanceof(Date),
+  __v: z.number(),
+  repos: z.array(ZDbRepo),
+});
 
-const ZProjectOut = z.object({
-  name: z.string(),
+type IDbProject = z.infer<typeof ZDbProject>;
+
+const ZProjectOut = ZDbProject.extend({
   repos: z.array(ZRepoOut),
-  isFullStack: z.boolean(),
 });
 
 type IProjectOut = z.infer<typeof ZProjectOut>;
 
 type IHydratedProjectDocument = HydratedDocument<
-  IDBProjectIn & {
-    repos: HydratedArraySubdocument<IDBRepoIn>;
+  IDbProject & {
+    repos: Types.DocumentArray<IDbRepo>;
   }
 >;
-type IProjectModel = Model<IDBProjectIn, {}, {}, {}, IHydratedProjectDocument>;
+type IProjectModel = Model<IDbProject, {}, {}, {}, IHydratedProjectDocument>;
 
-const ProjectSchema = new mongoose.Schema<IDBProjectIn, IProjectModel>(
+const ProjectSchema = new mongoose.Schema<IDbProject, IProjectModel>(
   {
     name: {
       type: String,
@@ -58,10 +59,10 @@ const ProjectSchema = new mongoose.Schema<IDBProjectIn, IProjectModel>(
   }
 );
 
-const Project = mongoose.model<IDBProjectIn, IProjectModel>(
+const Project = mongoose.model<IDbProject, IProjectModel>(
   "Project",
   ProjectSchema
 );
 
-export type { IProjectIn, IProjectOut };
+export type { IProjectIn, IProjectOut, IDbProject };
 export { Project, ProjectSchema, ZProjectIn, ZProjectOut };

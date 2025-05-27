@@ -37,7 +37,15 @@ const ZRepoIn = z.object({
   github: z.string(),
 });
 
-const ZRepoOut = ZRepoIn.transform((repo) => ({
+type IRepoIn = z.infer<typeof ZRepoIn>;
+
+const ZDbRepo = ZRepoIn.extend({
+  _id: z.instanceof(Types.ObjectId),
+});
+
+type IDbRepo = z.infer<typeof ZDbRepo>;
+
+const ZRepoOut = ZDbRepo.transform((repo) => ({
   ...repo,
   programmingLanguages: repo.programmingLanguages.map(
     (language) => programmingLanguagesMapping[language]
@@ -57,15 +65,9 @@ const ZRepoOut = ZRepoIn.transform((repo) => ({
   platforms: repo.platforms.map((platform) => platformsMapping[platform]),
 }));
 
-type IRepoIn = z.infer<typeof ZRepoIn>;
-
-type IDBRepoIn = IRepoIn & {
-  _id: Types.ObjectId;
-};
-
 type IRepoOut = z.infer<typeof ZRepoOut>;
 
-const RepoSchema = new mongoose.Schema<IDBRepoIn>(
+const RepoSchema = new mongoose.Schema<IDbRepo>(
   {
     displayName: {
       type: DisplayNameSchema,
@@ -133,12 +135,9 @@ const RepoSchema = new mongoose.Schema<IDBRepoIn>(
       type: String,
       required: true,
     },
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-    },
   },
   { _id: true }
 );
 
-export type { IRepoIn, IRepoOut, IDBRepoIn };
-export { ZRepoIn, ZRepoOut, RepoSchema };
+export type { IRepoIn, IRepoOut, IDbRepo };
+export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo };

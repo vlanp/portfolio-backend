@@ -9,17 +9,9 @@ const ZDisplayName = z.object({
 
 type IDisplayName = z.infer<typeof ZDisplayName>;
 
-class DisplayName implements IDisplayName {
-  name: string;
-  type: IRepoType;
-  toString: () => string = () => this.name + " " + this.type;
-  constructor(name: string, type: IRepoType) {
-    this.name = name;
-    this.type = type;
-  }
-}
+interface IDbDisplayName extends IDisplayName {}
 
-const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
+const DisplayNameSchema = new mongoose.Schema<IDbDisplayName>(
   {
     name: {
       type: String,
@@ -34,5 +26,5 @@ const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
   { _id: false }
 );
 
-export { DisplayName, ZDisplayName, DisplayNameSchema };
-export type { IDisplayName };
+export { ZDisplayName, DisplayNameSchema };
+export type { IDisplayName, IDbDisplayName };

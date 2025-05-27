@@ -5,13 +5,6 @@ const ZDisplayName = z.object({
     name: z.string(),
     type: ZERepoTypes,
 });
-class DisplayName {
-    constructor(name, type) {
-        this.toString = () => this.name + " " + this.type;
-        this.name = name;
-        this.type = type;
-    }
-}
 const DisplayNameSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -23,4 +16,4 @@ const DisplayNameSchema = new mongoose.Schema({
         required: true,
     },
 }, { _id: false });
-export { DisplayName, ZDisplayName, DisplayNameSchema };
+export { ZDisplayName, DisplayNameSchema };
