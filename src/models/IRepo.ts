@@ -67,7 +67,7 @@ const ZRepoOut = ZDbRepo.transform((repo) => ({
 
 type IRepoOut = z.infer<typeof ZRepoOut>;
 
-const RepoSchema = new mongoose.Schema<IDbRepo>(
+const RepoSchema = new mongoose.Schema<IRepoIn>(
   {
     displayName: {
       type: DisplayNameSchema,

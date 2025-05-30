@@ -1,9 +1,4 @@
-import mongoose, {
-  HydratedArraySubdocument,
-  HydratedDocument,
-  Model,
-  Types,
-} from "mongoose";
+import mongoose, { HydratedDocument, Model, Types } from "mongoose";
 import { IDbRepo, RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut } from "./IRepo.js";
 import z from "zod/v4";
 
@@ -36,9 +31,10 @@ type IHydratedProjectDocument = HydratedDocument<
     repos: Types.DocumentArray<IDbRepo>;
   }
 >;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type IProjectModel = Model<IDbProject, {}, {}, {}, IHydratedProjectDocument>;
 
-const ProjectSchema = new mongoose.Schema<IDbProject, IProjectModel>(
+const ProjectSchema = new mongoose.Schema<IProjectIn, IProjectModel>(
   {
     name: {
       type: String,
@@ -59,7 +55,7 @@ const ProjectSchema = new mongoose.Schema<IDbProject, IProjectModel>(
   }
 );
 
-const Project = mongoose.model<IDbProject, IProjectModel>(
+const Project = mongoose.model<IProjectIn, IProjectModel>(
   "Project",
   ProjectSchema
 );

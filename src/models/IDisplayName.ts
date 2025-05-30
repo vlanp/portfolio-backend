@@ -1,5 +1,5 @@
 import z from "zod/v4";
-import { IRepoType, ZERepoTypes } from "./IRepoType.js";
+import { ZERepoTypes } from "./IRepoType.js";
 import mongoose from "mongoose";
 
 const ZDisplayName = z.object({
@@ -9,7 +9,7 @@ const ZDisplayName = z.object({
 
 type IDisplayName = z.infer<typeof ZDisplayName>;
 
-interface IDbDisplayName extends IDisplayName {}
+type IDbDisplayName = IDisplayName;
 
 const DisplayNameSchema = new mongoose.Schema<IDbDisplayName>(
   {

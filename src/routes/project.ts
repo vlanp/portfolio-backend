@@ -1,27 +1,52 @@
-import express from "express";
-import { IProjectIn, Project, ZProjectIn } from "../models/IProject.js";
+import express, { Request } from "express";
+import {
+  IDbProject,
+  IProjectIn,
+  IProjectOut,
+  Project,
+  ZProjectIn,
+  ZProjectOut,
+} from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
-import { getContent, getDocsTree, getTags } from "../utils/github.js";
+import {
+  getContent,
+  getDocsTree,
+  getTags,
+  IContent,
+  IOctokitTagsResponse,
+} from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
 import { isValidObjectId } from "mongoose";
 import z, { ZodSafeParseResult } from "zod/v4";
+import {
+  IBadRequestResponse,
+  ICreatedResponse,
+  INotFoundResponse,
+  IOkResponse,
+} from "../models/ITypedResponse.js";
+import { IRepoOut, ZRepoOut } from "../models/IRepo.js";
 
 const router = express.Router();
 
-router.post("/project", isAdmin, async (req, res) => {
-  try {
+router.post(
+  "/project",
+  isAdmin,
+  async (
+    req: Request,
+    res: ICreatedResponse<IDbProject> | IBadRequestResponse
+  ) => {
     if (!req.body) {
-      res.status(400).json({
-        message: "Request body is missing",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Request body is missing."
+      );
       return;
     }
     const projectInParseResult: ZodSafeParseResult<IProjectIn> =
       ZProjectIn.safeParse(req.body);
     if (!projectInParseResult.success) {
-      res.status(400).json({
-        message: z.prettifyError(projectInParseResult.error),
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(projectInParseResult.error)
+      );
       return;
     }
 
@@ -35,59 +60,56 @@ router.post("/project", isAdmin, async (req, res) => {
     });
 
     if (existingRepos.length > 0) {
-      res.status(400).json({
-        message: "One or more Repos already exists",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "One or more Repos already exists"
+      );
       return;
     }
 
     const newDbProject = new Project<IProjectIn>(projectIn);
 
-    const addedProjectIn = await newDbProject.save();
+    const addedProjectDb = await newDbProject.save();
 
-    res.status(201).json({
-      message: "Project added successfully into the database",
-      repo: addedProjectIn,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+    (res as ICreatedResponse<IDbProject>).responsesFunc.sendCreatedResponse(
+      addedProjectDb,
+      "Project added successfully into the database"
+    );
   }
-});
+);
 
-router.get("/projects", async (req, res) => {
-  try {
-    const projectsIn = await Project.find().lean();
-    console.log(projectsIn[0].repos[0]._id);
-    // const projectsOut: HydratedDocument<IProjectOut>[] = projectsIn.res
-    //   .status(200)
-    //   .json(projects);
-    res.status(200).json({ message: "yo" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+router.get(
+  "/projects",
+  async (req: Request, res: IOkResponse<IProjectOut[]>) => {
+    const dbProjects = await Project.find().lean();
+    const projectsOutParseResults = dbProjects.map((dbProject) =>
+      ZProjectOut.safeParse(dbProject)
+    );
+    const projectsOut: IProjectOut[] = projectsOutParseResults
+      .filter((result) => result.success)
+      .map((result) => result.data);
+    res.responsesFunc.sendOkResponse(projectsOut);
   }
-});
+);
 
-router.get("/repo/:repoid/tag/:sha", async (req, res) => {
-  try {
+router.get(
+  "/repo/:repoid/tag/:sha",
+  async (
+    req: Request,
+    res: IOkResponse<ITagContent> | IBadRequestResponse | INotFoundResponse
+  ) => {
     const { repoid, sha } = req.params;
     const { lang } = req.query;
 
     if (typeof lang !== "string") {
-      res.status(400).json({
-        message: "lang query params must be a string",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "lang query params must be a string"
+      );
       return;
     }
     if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
       return;
     }
     const repo = (
@@ -100,17 +122,17 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
       )
     )?.repos[0];
     if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
       return;
     }
     const tags = await getTags(repo);
     const tag = tags.find((tag) => tag.commit.sha === sha);
     if (!tag) {
-      res.status(404).json({
-        message: "No tag found with sha " + sha,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No tag found with sha " + sha
+      );
       return;
     }
     const docsTree = await getDocsTree(repo, tag.commit.sha);
@@ -181,22 +203,64 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
         }),
     };
 
-    res.status(200).json(tagContent);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+    (res as IOkResponse<ITagContent>).responsesFunc.sendOkResponse(tagContent);
   }
-});
+);
 
-router.get("/repo/:repoid", async (req, res) => {
-  try {
+router.get(
+  "/repo/:repoid",
+  async (
+    req: Request,
+    res: IBadRequestResponse | IOkResponse<IRepoOut> | INotFoundResponse
+  ) => {
     const { repoid } = req.params;
     if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
+      return;
+    }
+    const dbRepo = (
+      await Project.findOne(
+        { "repos._id": repoid },
+        {
+          "repos.$": 1,
+          _id: 0,
+        }
+      )
+    )?.repos[0];
+    if (!dbRepo) {
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
+      return;
+    }
+    const repoOutParseResult = ZRepoOut.safeParse(dbRepo);
+    if (!repoOutParseResult.success) {
+      throw new Error(
+        "Failed to parse and transform Repo from db into RepoOut."
+      );
+    }
+    (res as IOkResponse<IRepoOut>).responsesFunc.sendOkResponse(
+      repoOutParseResult.data
+    );
+  }
+);
+
+router.get(
+  "/repo/:repoid/tags",
+  async (
+    req: Request,
+    res:
+      | IBadRequestResponse
+      | INotFoundResponse
+      | IOkResponse<IOctokitTagsResponse["data"]>
+  ) => {
+    const { repoid } = req.params;
+    if (!isValidObjectId(repoid)) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
       return;
     }
     const repo = (
@@ -209,66 +273,36 @@ router.get("/repo/:repoid", async (req, res) => {
       )
     )?.repos[0];
     if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
-      return;
-    }
-    res.status(200).json(repo);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
-  }
-});
-
-router.get("/repo/:repoid/tags", async (req, res) => {
-  try {
-    const { repoid } = req.params;
-    if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
-      return;
-    }
-    const repo = (
-      await Project.findOne(
-        { "repos._id": repoid },
-        {
-          "repos.$": 1,
-          _id: 0,
-        }
-      )
-    )?.repos[0];
-    if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
       return;
     }
     const tags = await getTags(repo);
-    res.status(200).json(tags);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    (
+      res as IOkResponse<IOctokitTagsResponse["data"]>
+    ).responsesFunc.sendOkResponse(tags);
   }
-});
+);
 
-router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
-  try {
+router.get(
+  "/repo/:repoid/fileContent/:filepath",
+  async (
+    req: Request,
+    res: IBadRequestResponse | INotFoundResponse | IOkResponse<IContent>
+  ) => {
     const { repoid, filepath } = req.params;
     const { ref } = req.query;
     if (typeof ref !== "string") {
-      res.status(400).json({
-        message: "ref query params must be a string",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "ref query params must be a string"
+      );
       return;
     }
     if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
       return;
     }
     const repo = (
@@ -281,48 +315,51 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
       )
     )?.repos[0];
     if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
       return;
     }
     const fileContent = await getContent(repo, filepath, ref);
     if (!fileContent) {
-      res.status(404).json({
-        message: "No file found with path " + filepath,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No file found with path " + filepath
+      );
       return;
     }
-    res.status(200).json(fileContent);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+    (res as IOkResponse<IContent>).responsesFunc.sendOkResponse(fileContent);
   }
-});
+);
 
-router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
-  try {
+router.get(
+  "/repo/:repoid/didFileExist/:filepath",
+  async (
+    req: Request,
+    res:
+      | IBadRequestResponse
+      | INotFoundResponse
+      | IOkResponse<{ exist: boolean }>
+      | IOkResponse<{ exist: boolean; filePath: string }>
+  ) => {
     const { repoid, filepath } = req.params;
 
     const { sha, lang } = req.query;
     if (typeof sha !== "string") {
-      res.status(400).json({
-        message: "sha query params must be a string",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "sha query params must be a string"
+      );
       return;
     }
     if (typeof lang !== "string") {
-      res.status(400).json({
-        message: "lang query params must be a string",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "lang query params must be a string"
+      );
       return;
     }
     if (!isValidObjectId(repoid)) {
-      res.status(400).json({
-        message: "Invalid repo id",
-      });
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
       return;
     }
     const repo = (
@@ -335,9 +372,9 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
       )
     )?.repos[0];
     if (!repo) {
-      res.status(404).json({
-        message: "No repo found with id " + repoid,
-      });
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
       return;
     }
     const docsTree = await getDocsTree(repo, sha);
@@ -353,11 +390,15 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
     );
     if (langFiles.length === 0) {
       if (files.map((it) => it.path).includes(filepath)) {
-        res.status(200).json({ exist: true });
+        (res as IOkResponse<{ exist: boolean }>).responsesFunc.sendOkResponse({
+          exist: true,
+        });
         return;
       }
     } else if (langFiles.map((it) => it.path).includes(filepath)) {
-      res.status(200).json({ exist: true });
+      (res as IOkResponse<{ exist: boolean }>).responsesFunc.sendOkResponse({
+        exist: true,
+      });
       return;
     } else if (files.map((it) => it.path).includes(filepath)) {
       const filesContents = await Promise.all(
@@ -376,7 +417,9 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
           (it) => it.fileContent.matterContent.id === id
         );
         if (fileInLang) {
-          res.status(200).json({
+          (
+            res as IOkResponse<{ exist: boolean; filePath: string }>
+          ).responsesFunc.sendOkResponse({
             exist: true,
             filePath: fileInLang.path,
           });
@@ -384,13 +427,10 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
         }
       }
     }
-    res.status(200).json({ exist: false });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error",
+    (res as IOkResponse<{ exist: boolean }>).responsesFunc.sendOkResponse({
+      exist: false,
     });
   }
-});
+);
 
 export default router;
