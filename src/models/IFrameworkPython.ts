@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import ICheckOut from "./ICheckOut";
+import ICheckOutFramework from "./ICheckOutFramework";
 
 const ZEFrameworksPythonIn = z.enum(["DJANGO", "FASTAPI"]);
 
@@ -16,7 +16,7 @@ const frameworksPythonMapping = {
     iconName: "SiFastapi",
     color: "#009688",
   },
-} as const satisfies Record<IFrameworkPythonIn, ICheckOut>;
+} as const satisfies Record<IFrameworkPythonIn, ICheckOutFramework>;
 
 type IFrameworksPythonMapping = typeof frameworksPythonMapping;
 

@@ -1,5 +1,6 @@
 import z from "zod/v4";
 const ZEFrameworksJavascriptIn = z.enum([
+    "TYPESCRIPT",
     "REACT",
     "ANGULAR",
     "VUE_JS",
@@ -15,6 +16,11 @@ const ZEFrameworksJavascriptIn = z.enum([
     "THREE_JS",
 ]);
 const frameworksJavascriptMapping = {
+    TYPESCRIPT: {
+        name: "TypeScript",
+        iconName: "SiTypescript",
+        color: "#3178C6",
+    },
     REACT: {
         name: "React",
         iconName: "SiReact",

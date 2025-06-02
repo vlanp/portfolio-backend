@@ -1,5 +1,10 @@
 import { z } from "zod/v4";
-import ICheckOut from "./ICheckOut";
+
+interface ICheckOutPlatform {
+  name: string;
+  iconName: string;
+  color: string;
+}
 
 const ZEPlatformsIn = z.enum([
   "WINDOWS",
@@ -43,7 +48,7 @@ const platformsMapping = {
     iconName: "SiMdnwebdocs",
     color: "#000000",
   },
-} as const satisfies Record<IPlatformIn, ICheckOut>;
+} as const satisfies Record<IPlatformIn, ICheckOutPlatform>;
 
 type IPlatformsMapping = typeof platformsMapping;
 

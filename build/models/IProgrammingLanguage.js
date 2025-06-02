@@ -1,16 +1,12 @@
 import { z } from "zod/v4";
 const ZEProgrammingLanguagesIn = z.enum([
-    "TYPESCRIPT",
     "JAVASCRIPT",
     "PYTHON",
     "KOTLIN",
+    "CSS",
+    "HTML",
 ]);
 const programmingLanguagesMapping = {
-    TYPESCRIPT: {
-        name: "TypeScript",
-        iconName: "SiTypescript",
-        color: "#3178C6",
-    },
     JAVASCRIPT: {
         name: "JavaScript",
         iconName: "SiJavascript",
@@ -25,6 +21,16 @@ const programmingLanguagesMapping = {
         name: "Kotlin",
         iconName: "SiKotlin",
         color: "#7F52FF",
+    },
+    CSS: {
+        name: "CSS",
+        iconName: "SiCss3",
+        color: "#256BAA",
+    },
+    HTML: {
+        name: "HTML",
+        iconName: "SiHtml5",
+        color: "#E34F26",
     },
 };
 export { programmingLanguagesMapping, ZEProgrammingLanguagesIn };

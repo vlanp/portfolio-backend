@@ -1,21 +1,22 @@
 import { z } from "zod/v4";
-import ICheckOut from "./ICheckOut";
 
 const ZEProgrammingLanguagesIn = z.enum([
-  "TYPESCRIPT",
   "JAVASCRIPT",
   "PYTHON",
   "KOTLIN",
+  "CSS",
+  "HTML",
 ]);
+
+interface ICheckOutProgrammingLanguage {
+  name: string;
+  iconName: string;
+  color: string;
+}
 
 type IProgrammingLanguageIn = z.infer<typeof ZEProgrammingLanguagesIn>;
 
 const programmingLanguagesMapping = {
-  TYPESCRIPT: {
-    name: "TypeScript",
-    iconName: "SiTypescript",
-    color: "#3178C6",
-  },
   JAVASCRIPT: {
     name: "JavaScript",
     iconName: "SiJavascript",
@@ -31,7 +32,20 @@ const programmingLanguagesMapping = {
     iconName: "SiKotlin",
     color: "#7F52FF",
   },
-} as const satisfies Record<IProgrammingLanguageIn, ICheckOut>;
+  CSS: {
+    name: "CSS",
+    iconName: "SiCss3",
+    color: "#256BAA",
+  },
+  HTML: {
+    name: "HTML",
+    iconName: "SiHtml5",
+    color: "#E34F26",
+  },
+} as const satisfies Record<
+  IProgrammingLanguageIn,
+  ICheckOutProgrammingLanguage
+>;
 
 type IProgrammingLanguagesMapping = typeof programmingLanguagesMapping;
 

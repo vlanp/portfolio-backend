@@ -8,6 +8,7 @@ import { frameworksJavascriptMapping, ZEFrameworksJavascriptIn, } from "./IFrame
 import { frameworksKotlinMapping, ZEFrameworksKotlinIn, } from "./IFrameworkKotlin.js";
 import { frameworksPythonMapping, ZEFrameworksPythonIn, } from "./IFrameworkPython.js";
 import { platformsMapping, ZEPlatformsIn } from "./IPlatform.js";
+import { frameworksHTMLMapping, ZEFrameworksHTMLIn } from "./IFrameworkHTML.js";
 const ZRepoIn = z.object({
     displayName: ZDisplayName,
     owner: z.string(),
@@ -19,6 +20,7 @@ const ZRepoIn = z.object({
     frameworksKotlin: z.array(ZEFrameworksKotlinIn).optional(),
     frameworksPython: z.array(ZEFrameworksPythonIn).optional(),
     frameworksCSS: z.array(ZEFrameworksCSSIn).optional(),
+    frameworksHTML: z.array(ZEFrameworksHTMLIn).optional(),
     platforms: z.array(ZEPlatformsIn),
     youtube: z.string(),
     github: z.string(),
@@ -26,15 +28,52 @@ const ZRepoIn = z.object({
 const ZDbRepo = ZRepoIn.extend({
     _id: z.instanceof(Types.ObjectId),
 });
-const ZRepoOut = ZDbRepo.transform((repo) => ({
-    ...repo,
-    programmingLanguages: repo.programmingLanguages.map((language) => programmingLanguagesMapping[language]),
-    frameworksJavascript: repo.frameworksJavascript?.map((framework) => frameworksJavascriptMapping[framework]),
-    frameworksKotlin: repo.frameworksKotlin?.map((framework) => frameworksKotlinMapping[framework]),
-    frameworksPython: repo.frameworksPython?.map((framework) => frameworksPythonMapping[framework]),
-    frameworksCSS: repo.frameworksCSS?.map((framework) => frameworksCSSMapping[framework]),
-    platforms: repo.platforms.map((platform) => platformsMapping[platform]),
-}));
+const ZRepoOut = ZDbRepo.transform((repo) => {
+    const { 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksJavascript, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksKotlin, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksPython, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksCSS, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksHTML, ...repoWithoutFrameworks } = repo;
+    return {
+        ...repoWithoutFrameworks,
+        programmingLanguages: repo.programmingLanguages.map((language) => {
+            switch (language) {
+                case "JAVASCRIPT":
+                    return {
+                        ...programmingLanguagesMapping[language],
+                        frameworks: repo.frameworksJavascript?.map((framework) => frameworksJavascriptMapping[framework]) || [],
+                    };
+                case "CSS":
+                    return {
+                        ...programmingLanguagesMapping[language],
+                        frameworks: repo.frameworksCSS?.map((framework) => frameworksCSSMapping[framework]) || [],
+                    };
+                case "HTML":
+                    return {
+                        ...programmingLanguagesMapping[language],
+                        frameworks: repo.frameworksHTML?.map((framework) => frameworksHTMLMapping[framework]) || [],
+                    };
+                case "KOTLIN":
+                    return {
+                        ...programmingLanguagesMapping[language],
+                        frameworks: repo.frameworksKotlin?.map((framework) => frameworksKotlinMapping[framework]) || [],
+                    };
+                case "PYTHON":
+                    return {
+                        ...programmingLanguagesMapping[language],
+                        frameworks: repo.frameworksPython?.map((framework) => frameworksPythonMapping[framework]) || [],
+                    };
+            }
+        }),
+        platforms: repo.platforms.map((platform) => platformsMapping[platform]),
+    };
+});
 const RepoSchema = new mongoose.Schema({
     displayName: {
         type: DisplayNameSchema,

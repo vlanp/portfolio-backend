@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import ICheckOut from "./ICheckOut";
+import ICheckOutFramework from "./ICheckOutFramework";
 
 const ZEFrameworksKotlinIn = z.enum(["JETPACK_COMPOSE"]);
 
@@ -11,7 +11,7 @@ const frameworksKotlinMapping = {
     iconName: "SiJetpackcompose",
     color: "#4285F4",
   },
-} as const satisfies Record<IFrameworkKotlinIn, ICheckOut>;
+} as const satisfies Record<IFrameworkKotlinIn, ICheckOutFramework>;
 
 type IFrameworksKotlinMapping = typeof frameworksKotlinMapping;
 
