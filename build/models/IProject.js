@@ -1,6 +1,9 @@
 import mongoose, { Types } from "mongoose";
-import { RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut } from "./IRepo.js";
+import { getFrameworksFromRepo, RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut, } from "./IRepo.js";
 import z from "zod/v4";
+import { arrayDistinct, isStringArray } from "../utils/array.js";
+import { programmingLanguagesMapping, } from "./IProgrammingLanguage.js";
+import { platformsMapping } from "./IPlatform.js";
 const ZProjectIn = z.object({
     name: z.string(),
     repos: z.array(ZRepoIn),
@@ -34,4 +37,36 @@ const ProjectSchema = new mongoose.Schema({
     _id: true,
 });
 const Project = mongoose.model("Project", ProjectSchema);
-export { Project, ProjectSchema, ZProjectIn, ZProjectOut };
+function getAllFrameworksFromProjects(projects) {
+    const allFrameworks = new Set();
+    projects.forEach((project) => {
+        project.repos.forEach((repo) => {
+            const repoFrameworks = getFrameworksFromRepo(repo);
+            repoFrameworks.forEach((framework) => allFrameworks.add(framework));
+        });
+    });
+    return Array.from(allFrameworks);
+}
+function getAllProgrammingLanguagesFromProjects(projects) {
+    return arrayDistinct(projects.flatMap((project) => project.repos.flatMap((repo) => {
+        const programmingLanguages = repo.programmingLanguages;
+        if (isStringArray(programmingLanguages)) {
+            return programmingLanguages.map((it) => programmingLanguagesMapping[it].name);
+        }
+        else {
+            return programmingLanguages.map((it) => it.name);
+        }
+    })));
+}
+function getAllPlatformsFromProjects(projects) {
+    return arrayDistinct(projects.flatMap((project) => project.repos.flatMap((repo) => {
+        const platforms = repo.platforms;
+        if (isStringArray(platforms)) {
+            return platforms.map((it) => platformsMapping[it].name);
+        }
+        else {
+            return platforms.map((it) => it.name);
+        }
+    })));
+}
+export { Project, ProjectSchema, ZProjectIn, ZProjectOut, getAllFrameworksFromProjects, getAllProgrammingLanguagesFromProjects, getAllPlatformsFromProjects, };

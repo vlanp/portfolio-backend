@@ -142,4 +142,9 @@ const RepoSchema = new mongoose.Schema({
         required: true,
     },
 }, { _id: true });
-export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo };
+function getFrameworksFromRepo(repo) {
+    const allFrameworks = [];
+    repo.programmingLanguages.forEach((programmingLanguage) => allFrameworks.push(...programmingLanguage.frameworks.map((framework) => framework.name)));
+    return allFrameworks;
+}
+export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo, getFrameworksFromRepo };

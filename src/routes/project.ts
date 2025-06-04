@@ -1,5 +1,8 @@
 import express, { Request } from "express";
 import {
+  getAllFrameworksFromProjects,
+  getAllPlatformsFromProjects,
+  getAllProgrammingLanguagesFromProjects,
   IDbProject,
   IProjectIn,
   IProjectOut,
@@ -25,6 +28,7 @@ import {
   IOkResponse,
 } from "../models/ITypedResponse.js";
 import { IRepoOut, ZRepoOut } from "../models/IRepo.js";
+import IProjectsFilters from "../models/IProjectsFilters.js";
 
 const router = express.Router();
 
@@ -57,7 +61,7 @@ router.post(
         "repos.owner": repo.owner,
         "repos.repo": repo.repo,
       })),
-    });
+    }).lean();
 
     if (existingRepos.length > 0) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -119,7 +123,7 @@ router.get(
           "repos.$": 1,
           _id: 0,
         }
-      )
+      ).lean()
     )?.repos[0];
     if (!repo) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
@@ -241,7 +245,7 @@ router.get(
           "repos.$": 1,
           _id: 0,
         }
-      )
+      ).lean()
     )?.repos[0];
     if (!dbRepo) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
@@ -284,7 +288,7 @@ router.get(
           "repos.$": 1,
           _id: 0,
         }
-      )
+      ).lean()
     )?.repos[0];
     if (!repo) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
@@ -326,7 +330,7 @@ router.get(
           "repos.$": 1,
           _id: 0,
         }
-      )
+      ).lean()
     )?.repos[0];
     if (!repo) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
@@ -383,7 +387,7 @@ router.get(
           "repos.$": 1,
           _id: 0,
         }
-      )
+      ).lean()
     )?.repos[0];
     if (!repo) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
@@ -466,7 +470,7 @@ router.get(
       );
       return;
     }
-    const dbProject = await Project.findOne({ "repos._id": repoid });
+    const dbProject = await Project.findOne({ "repos._id": repoid }).lean();
     if (!dbProject) {
       (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
         "No repo found with id " + repoid
@@ -482,6 +486,25 @@ router.get(
     (res as IOkResponse<IProjectOut>).responsesFunc.sendOkResponse(
       projectOutParseResult.data
     );
+  }
+);
+
+router.get(
+  "/projects/filters",
+  async (req: Request, res: IOkResponse<IProjectsFilters>) => {
+    const dbProjects = await Project.find().lean();
+    const projectsOutParseResults = dbProjects.map((dbProject) =>
+      ZProjectOut.safeParse(dbProject)
+    );
+    const projectsOut: IProjectOut[] = projectsOutParseResults
+      .filter((result) => result.success)
+      .map((result) => result.data);
+    const filters = {
+      programmingLanguages: getAllProgrammingLanguagesFromProjects(projectsOut),
+      frameworks: getAllFrameworksFromProjects(projectsOut),
+      platforms: getAllPlatformsFromProjects(projectsOut),
+    };
+    res.responsesFunc.sendOkResponse(filters);
   }
 );
 

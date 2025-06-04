@@ -1,5 +1,5 @@
 import express from "express";
-import { Project, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
+import { getAllFrameworksFromProjects, getAllPlatformsFromProjects, getAllProgrammingLanguagesFromProjects, Project, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags, } from "../utils/github.js";
 import { isValidObjectId } from "mongoose";
@@ -22,7 +22,7 @@ router.post("/project", isAdmin, async (req, res) => {
             "repos.owner": repo.owner,
             "repos.repo": repo.repo,
         })),
-    });
+    }).lean();
     if (existingRepos.length > 0) {
         res.responsesFunc.sendBadRequestResponse("One or more Repos already exists");
         return;
@@ -53,7 +53,7 @@ router.get("/repo/:repoid/tag/:sha", async (req, res) => {
     const repo = (await Project.findOne({ "repos._id": repoid }, {
         "repos.$": 1,
         _id: 0,
-    }))?.repos[0];
+    }).lean())?.repos[0];
     if (!repo) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -142,7 +142,7 @@ router.get("/repo/:repoid", async (req, res) => {
     const dbRepo = (await Project.findOne({ "repos._id": repoid }, {
         "repos.$": 1,
         _id: 0,
-    }))?.repos[0];
+    }).lean())?.repos[0];
     if (!dbRepo) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -162,7 +162,7 @@ router.get("/repo/:repoid/tags", async (req, res) => {
     const repo = (await Project.findOne({ "repos._id": repoid }, {
         "repos.$": 1,
         _id: 0,
-    }))?.repos[0];
+    }).lean())?.repos[0];
     if (!repo) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -184,7 +184,7 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
     const repo = (await Project.findOne({ "repos._id": repoid }, {
         "repos.$": 1,
         _id: 0,
-    }))?.repos[0];
+    }).lean())?.repos[0];
     if (!repo) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -214,7 +214,7 @@ router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
     const repo = (await Project.findOne({ "repos._id": repoid }, {
         "repos.$": 1,
         _id: 0,
-    }))?.repos[0];
+    }).lean())?.repos[0];
     if (!repo) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -273,7 +273,7 @@ router.get("/project/:repoid", async (req, res) => {
         res.responsesFunc.sendBadRequestResponse("Invalid repo id");
         return;
     }
-    const dbProject = await Project.findOne({ "repos._id": repoid });
+    const dbProject = await Project.findOne({ "repos._id": repoid }).lean();
     if (!dbProject) {
         res.responsesFunc.sendNotFoundResponse("No repo found with id " + repoid);
         return;
@@ -283,5 +283,18 @@ router.get("/project/:repoid", async (req, res) => {
         throw new Error("Failed to parse and transform Project from db into ProjectOut.");
     }
     res.responsesFunc.sendOkResponse(projectOutParseResult.data);
+});
+router.get("/projects/filters", async (req, res) => {
+    const dbProjects = await Project.find().lean();
+    const projectsOutParseResults = dbProjects.map((dbProject) => ZProjectOut.safeParse(dbProject));
+    const projectsOut = projectsOutParseResults
+        .filter((result) => result.success)
+        .map((result) => result.data);
+    const filters = {
+        programmingLanguages: getAllProgrammingLanguagesFromProjects(projectsOut),
+        frameworks: getAllFrameworksFromProjects(projectsOut),
+        platforms: getAllPlatformsFromProjects(projectsOut),
+    };
+    res.responsesFunc.sendOkResponse(filters);
 });
 export default router;
