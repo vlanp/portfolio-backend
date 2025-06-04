@@ -15,6 +15,13 @@ import rehypeHighlight from "rehype-highlight";
 import { rehypeToc } from "./rehypeToc.js";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
+import { z } from "zod/v4";
+const ZFrontMatterData = z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    nav: z.number().optional(),
+    id: z.string().optional(),
+});
 const cacheOptions = {
     max: 100,
     ttl: 1000 * 60 * 60,
@@ -77,7 +84,15 @@ const getContent = async (repo, path, ref) => {
     if (typeof response.data !== "string") {
         throw new Error("Content is not a string");
     }
-    const matterContent = matter(response.data);
+    const unsafeMatterContent = matter(response.data);
+    const matterContentDataParseResult = ZFrontMatterData.safeParse(unsafeMatterContent.data);
+    if (!matterContentDataParseResult.success) {
+        return null;
+    }
+    const matterContent = {
+        ...unsafeMatterContent,
+        data: matterContentDataParseResult.data,
+    };
     const tableOfContents = [];
     const processedContent = await unified()
         .use(remarkParse)
@@ -113,4 +128,4 @@ const getContent = async (repo, path, ref) => {
     contentCache.set(cacheKey, content);
     return content;
 };
-export { getTags, getDocsTree, getContent };
+export { getTags, getDocsTree, getContent, ZFrontMatterData };

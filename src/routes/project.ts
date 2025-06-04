@@ -152,9 +152,13 @@ router.get(
     );
     const filesContentsPromises = files.map(async (file) => {
       const fileContent = await getContent(repo, file.path, tag.commit.sha);
-      return { file, matterContent: fileContent.matterContent };
+      return fileContent
+        ? { file, matterContent: fileContent.matterContent }
+        : null;
     });
-    const filesContents = await Promise.all(filesContentsPromises);
+    const filesContents = (await Promise.all(filesContentsPromises)).filter(
+      (fileContent) => fileContent !== null
+    );
     const tagContent: ITagContent = {
       tag: tag,
       orderedTags: tags,
@@ -170,7 +174,12 @@ router.get(
             .sort((a, b) => {
               const navA = a.matterContent.nav;
               const navB = b.matterContent.nav;
-              if (Number.isInteger(navA) && Number.isInteger(navB)) {
+              if (
+                navA &&
+                Number.isInteger(navA) &&
+                navB &&
+                Number.isInteger(navB)
+              ) {
                 return navA - navB;
               }
               if (Number.isInteger(navA)) {
@@ -190,7 +199,12 @@ router.get(
         .sort((a, b) => {
           const navA = a.orderedFiles[0].matterContent.nav;
           const navB = b.orderedFiles[0].matterContent.nav;
-          if (Number.isInteger(navA) && Number.isInteger(navB)) {
+          if (
+            navA &&
+            Number.isInteger(navA) &&
+            navB &&
+            Number.isInteger(navB)
+          ) {
             return navA - navB;
           }
           if (Number.isInteger(navA)) {
@@ -401,11 +415,17 @@ router.get(
       });
       return;
     } else if (files.map((it) => it.path).includes(filepath)) {
-      const filesContents = await Promise.all(
-        files.map(async (it) => ({
-          fileContent: await getContent(repo, it.path, sha),
-          path: it.path,
-        }))
+      const filesContentsPromises = files.map(async (it) => {
+        const fileContent = await getContent(repo, it.path, sha);
+        return fileContent
+          ? {
+              fileContent,
+              path: it.path,
+            }
+          : null;
+      });
+      const filesContents = (await Promise.all(filesContentsPromises)).filter(
+        (it) => it !== null
       );
       const id = filesContents.find((it) => it.path === filepath)?.fileContent
         .matterContent.id;
@@ -430,6 +450,38 @@ router.get(
     (res as IOkResponse<{ exist: boolean }>).responsesFunc.sendOkResponse({
       exist: false,
     });
+  }
+);
+
+router.get(
+  "/project/:repoid",
+  async (
+    req: Request,
+    res: IBadRequestResponse | INotFoundResponse | IOkResponse<IProjectOut>
+  ) => {
+    const { repoid } = req.params;
+    if (!isValidObjectId(repoid)) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
+      return;
+    }
+    const dbProject = await Project.findOne({ "repos._id": repoid });
+    if (!dbProject) {
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No repo found with id " + repoid
+      );
+      return;
+    }
+    const projectOutParseResult = ZProjectOut.safeParse(dbProject);
+    if (!projectOutParseResult.success) {
+      throw new Error(
+        "Failed to parse and transform Project from db into ProjectOut."
+      );
+    }
+    (res as IOkResponse<IProjectOut>).responsesFunc.sendOkResponse(
+      projectOutParseResult.data
+    );
   }
 );
 

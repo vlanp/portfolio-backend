@@ -18,6 +18,7 @@ import IDocToC from "../models/IDocToc.js";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
 import { IDbRepo } from "../models/IRepo.js";
+import { z } from "zod/v4";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -31,12 +32,14 @@ type IOctokitTreeResponse = Awaited<
   ReturnType<OctokitType["rest"]["git"]["getTree"]>
 >;
 
-interface IFrontMatterData {
-  title: string;
-  description: string;
-  nav: number;
-  id?: string | undefined;
-}
+const ZFrontMatterData = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  nav: z.number().optional(),
+  id: z.string().optional(),
+});
+
+type IFrontMatterData = z.infer<typeof ZFrontMatterData>;
 
 type IGrayMatterFile<H> = GrayMatterFile<string> & {
   data: H;
@@ -117,7 +120,7 @@ const getContent = async (
   repo: IDbRepo,
   path: string,
   ref: string
-): Promise<IContent> => {
+): Promise<IContent | null> => {
   const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
@@ -134,9 +137,20 @@ const getContent = async (
   if (typeof response.data !== "string") {
     throw new Error("Content is not a string");
   }
-  const matterContent = matter(
-    response.data
-  ) as IGrayMatterFile<IFrontMatterData>;
+  const unsafeMatterContent = matter(response.data);
+
+  const matterContentDataParseResult = ZFrontMatterData.safeParse(
+    unsafeMatterContent.data
+  );
+
+  if (!matterContentDataParseResult.success) {
+    return null;
+  }
+
+  const matterContent = {
+    ...unsafeMatterContent,
+    data: matterContentDataParseResult.data,
+  };
 
   const tableOfContents: IDocToC[] = [];
 
@@ -178,7 +192,7 @@ const getContent = async (
   return content;
 };
 
-export { getTags, getDocsTree, getContent };
+export { getTags, getDocsTree, getContent, ZFrontMatterData };
 export type {
   IOctokitContentResponse,
   IOctokitTagsResponse,
