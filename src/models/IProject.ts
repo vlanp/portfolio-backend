@@ -1,4 +1,9 @@
-import mongoose, { HydratedDocument, Model, Types } from "mongoose";
+import mongoose, {
+  HydratedDocument,
+  Model,
+  SearchIndexDescription,
+  Types,
+} from "mongoose";
 import {
   getFrameworksFromRepo,
   IDbRepo,
@@ -13,8 +18,9 @@ import { arrayDistinct, isStringArray } from "../utils/array.js";
 import { IPlaformOut, platformsMapping } from "./IPlatform.js";
 import { IAllProjectsFilters } from "./IProjectsFilters.js";
 import { IProgrammingLanguageOut } from "./IProgrammingLanguage.js";
+import { extractSearchPaths } from "../utils/mongooseSearchPaths.js";
 
-const ZProjectIn = z.object({
+const ZProjectIn = z.strictObject({
   name: z.string(),
   repos: z.array(ZRepoIn),
   isFullStack: z.boolean(),
@@ -22,7 +28,7 @@ const ZProjectIn = z.object({
 
 type IProjectIn = z.infer<typeof ZProjectIn>;
 
-const ZDbProject = z.object({
+const ZDbProject = z.strictObject({
   ...ZProjectIn.shape,
   _id: z.instanceof(Types.ObjectId),
   createdAt: z.instanceof(Date),
@@ -33,7 +39,7 @@ const ZDbProject = z.object({
 
 type IDbProject = z.infer<typeof ZDbProject>;
 
-const ZProjectOut = z.object({
+const ZProjectOut = z.strictObject({
   ...ZDbProject.shape,
   repos: z.array(ZRepoOut),
 });
@@ -68,6 +74,49 @@ const ProjectSchema = new mongoose.Schema<IProjectIn, IProjectModel>(
     _id: true,
   }
 );
+
+const ProjectSearchIndex = {
+  name: "ProjectsSearch",
+  definition: {
+    mappings: {
+      dynamic: false,
+      fields: {
+        name: {
+          type: "autocomplete",
+        },
+        repos: {
+          fields: {
+            description: {
+              fields: {
+                en: {
+                  type: "autocomplete",
+                },
+                fr: {
+                  type: "autocomplete",
+                },
+              },
+              type: "document",
+            },
+            displayName: {
+              fields: {
+                name: {
+                  type: "autocomplete",
+                },
+              },
+              type: "document",
+            },
+          },
+          type: "document",
+        },
+      },
+    },
+  },
+  type: "search",
+} as const satisfies SearchIndexDescription;
+
+ProjectSchema.searchIndex(ProjectSearchIndex);
+
+const projectSearchPaths = extractSearchPaths(ProjectSearchIndex);
 
 const Project = mongoose.model<IProjectIn, IProjectModel>(
   "Project",
@@ -141,4 +190,6 @@ export {
   getAllFrameworksFromProjects,
   getAllProgrammingLanguagesFromProjects,
   getAllPlatformsFromProjects,
+  ProjectSearchIndex,
+  projectSearchPaths,
 };

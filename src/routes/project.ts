@@ -6,6 +6,8 @@ import {
   IProjectIn,
   IProjectOut,
   Project,
+  ProjectSearchIndex,
+  projectSearchPaths,
   ZProjectIn,
   ZProjectOut,
 } from "../models/IProject.js";
@@ -39,6 +41,8 @@ import {
   ISelectedProjectsFilters,
   ZSelectedProjectsFilters,
 } from "../models/IProjectsFilters.js";
+import { arrayDistinctBy } from "../utils/array.js";
+import { searchDbWithIndex } from "../utils/mongooseSearch.js";
 
 const router = express.Router();
 
@@ -100,11 +104,9 @@ router.post(
     const body = req.body;
 
     let filters: ISelectedProjectsFilters | undefined = undefined;
-    if (Object.keys(body).length !== 0) {
+    if (body && Object.keys(body).length !== 0) {
       const bodyParseResult = ZSelectedProjectsFilters.safeParse(body);
       if (!bodyParseResult.success) {
-        console.log(z.prettifyError(bodyParseResult.error));
-
         (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
           z.prettifyError(bodyParseResult.error)
         );
@@ -112,7 +114,8 @@ router.post(
       }
       filters = bodyParseResult.data;
     }
-    let dbProjects: IDbProject[];
+    let dbProjects: IDbProject[] = [];
+    const dbProjectsPromises: Promise<IDbProject[]>[] = [];
     if (!filters) {
       dbProjects = await Project.find().lean();
     } else {
@@ -138,6 +141,8 @@ router.post(
       const platforms = filters.platforms.map(
         (platform) => platformsReverseMapping[platform]
       );
+
+      const search = filters.search;
 
       const dbFilters = [];
       if (selectedProgrammingLanguages.length > 0) {
@@ -171,19 +176,49 @@ router.post(
         }
       });
 
-      console.log(
-        "dbFilters",
-        dbFilters?.map((filter) => JSON.stringify(filter))
-      );
+      if (search) {
+        dbProjectsPromises.push(
+          searchDbWithIndex(
+            search,
+            Project,
+            ProjectSearchIndex.name,
+            projectSearchPaths
+          )
+        );
+      }
 
       if (!filters.filtersBehavior || filters.filtersBehavior === "union") {
-        dbProjects = await Project.find({
-          $or: dbFilters,
-        }).lean();
+        if (dbFilters.length > 0 || !search) {
+          dbProjectsPromises.push(
+            Project.find({
+              $or: dbFilters,
+            }).lean()
+          );
+        }
+        const results = await Promise.all(dbProjectsPromises);
+        dbProjects = arrayDistinctBy(results.flat(), (project) =>
+          project._id.toString()
+        );
       } else {
-        dbProjects = await Project.find({
-          $and: dbFilters,
-        }).lean();
+        if (dbFilters.length > 0 || !search) {
+          dbProjectsPromises.push(
+            Project.find({
+              $and: dbFilters,
+            }).lean()
+          );
+        }
+        const results = await Promise.all(dbProjectsPromises);
+        const firstResult = results[0];
+        const secondResult: IDbProject[] | undefined = results[1] || undefined;
+        if (!secondResult) {
+          dbProjects = firstResult;
+        } else {
+          dbProjects = firstResult.filter((project) =>
+            secondResult
+              .map((project) => project._id.toString())
+              .includes(project._id.toString())
+          );
+        }
       }
     }
     const projectsOutParseResults = dbProjects.map((dbProject) =>

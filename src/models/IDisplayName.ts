@@ -2,7 +2,7 @@ import z from "zod/v4";
 import { ZERepoTypes } from "./IRepoType.js";
 import mongoose from "mongoose";
 
-const ZDisplayName = z.object({
+const ZDisplayName = z.strictObject({
   name: z.string(),
   type: ZERepoTypes,
 });

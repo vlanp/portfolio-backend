@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllPlatformsFromProjects, getAllProgrammingLanguagesFromProjects, Project, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
+import { getAllPlatformsFromProjects, getAllProgrammingLanguagesFromProjects, Project, ProjectSearchIndex, projectSearchPaths, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags, } from "../utils/github.js";
 import { isValidObjectId } from "mongoose";
@@ -8,6 +8,8 @@ import { findMatchingFrameworkKey, findMatchingFrameworksValues, ZRepoOut, } fro
 import { programmingLanguagesReverseMapping } from "../models/IProgrammingLanguage.js";
 import { platformsReverseMapping } from "../models/IPlatform.js";
 import { ZSelectedProjectsFilters, } from "../models/IProjectsFilters.js";
+import { arrayDistinctBy } from "../utils/array.js";
+import { searchDbWithIndex } from "../utils/mongooseSearch.js";
 const router = express.Router();
 router.post("/project", isAdmin, async (req, res) => {
     if (!req.body) {
@@ -37,16 +39,16 @@ router.post("/project", isAdmin, async (req, res) => {
 router.post("/projects", async (req, res) => {
     const body = req.body;
     let filters = undefined;
-    if (Object.keys(body).length !== 0) {
+    if (body && Object.keys(body).length !== 0) {
         const bodyParseResult = ZSelectedProjectsFilters.safeParse(body);
         if (!bodyParseResult.success) {
-            console.log(z.prettifyError(bodyParseResult.error));
             res.responsesFunc.sendBadRequestResponse(z.prettifyError(bodyParseResult.error));
             return;
         }
         filters = bodyParseResult.data;
     }
-    let dbProjects;
+    let dbProjects = [];
+    const dbProjectsPromises = [];
     if (!filters) {
         dbProjects = await Project.find().lean();
     }
@@ -66,6 +68,7 @@ router.post("/projects", async (req, res) => {
             .filter((pl) => pl.name.isSelected)
             .map((pl) => pl.name.value);
         const platforms = filters.platforms.map((platform) => platformsReverseMapping[platform]);
+        const search = filters.search;
         const dbFilters = [];
         if (selectedProgrammingLanguages.length > 0) {
             dbFilters.push({
@@ -91,16 +94,35 @@ router.post("/projects", async (req, res) => {
                 });
             }
         });
-        console.log("dbFilters", dbFilters?.map((filter) => JSON.stringify(filter)));
+        if (search) {
+            dbProjectsPromises.push(searchDbWithIndex(search, Project, ProjectSearchIndex.name, projectSearchPaths));
+        }
         if (!filters.filtersBehavior || filters.filtersBehavior === "union") {
-            dbProjects = await Project.find({
-                $or: dbFilters,
-            }).lean();
+            if (dbFilters.length > 0 || !search) {
+                dbProjectsPromises.push(Project.find({
+                    $or: dbFilters,
+                }).lean());
+            }
+            const results = await Promise.all(dbProjectsPromises);
+            dbProjects = arrayDistinctBy(results.flat(), (project) => project._id.toString());
         }
         else {
-            dbProjects = await Project.find({
-                $and: dbFilters,
-            }).lean();
+            if (dbFilters.length > 0 || !search) {
+                dbProjectsPromises.push(Project.find({
+                    $and: dbFilters,
+                }).lean());
+            }
+            const results = await Promise.all(dbProjectsPromises);
+            const firstResult = results[0];
+            const secondResult = results[1] || undefined;
+            if (!secondResult) {
+                dbProjects = firstResult;
+            }
+            else {
+                dbProjects = firstResult.filter((project) => secondResult
+                    .map((project) => project._id.toString())
+                    .includes(project._id.toString()));
+            }
         }
     }
     const projectsOutParseResults = dbProjects.map((dbProject) => ZProjectOut.safeParse(dbProject));

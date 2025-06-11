@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { z } from "zod/v4";
 
-const ZRepoDescription = z.object({
+const ZRepoDescription = z.strictObject({
   fr: z.string(),
   en: z.string(),
 });

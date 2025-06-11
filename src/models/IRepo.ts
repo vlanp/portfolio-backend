@@ -29,7 +29,7 @@ type ICheckRepoIn = {
   [k in `frameworks${IProgrammingLanguageOut["name"]}`]: string[];
 };
 
-const ZRepoIn = z.object({
+const ZRepoIn = z.strictObject({
   displayName: ZDisplayName,
   owner: z.string(),
   repo: z.string(),
@@ -114,7 +114,7 @@ function findMatchingFrameworksValues(
   });
 }
 
-const ZDbRepo = z.object({
+const ZDbRepo = z.strictObject({
   ...ZRepoIn.shape,
   _id: z.instanceof(Types.ObjectId),
 });

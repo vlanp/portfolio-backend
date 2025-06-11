@@ -5,7 +5,7 @@ import projectRouter from "./routes/project.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 import { addTypedResponses, } from "./models/ITypedResponse.js";
-mongoose.connect(checkedEnv.MONGODB_LOCAL_URI);
+mongoose.connect(checkedEnv.MONGODB_URI);
 const app = express();
 app.use(addTypedResponses);
 app.use(cors());

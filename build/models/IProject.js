@@ -1,14 +1,15 @@
-import mongoose, { Types } from "mongoose";
+import mongoose, { Types, } from "mongoose";
 import { getFrameworksFromRepo, RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut, } from "./IRepo.js";
 import z from "zod/v4";
 import { arrayDistinct, isStringArray } from "../utils/array.js";
 import { platformsMapping } from "./IPlatform.js";
-const ZProjectIn = z.object({
+import { extractSearchPaths } from "../utils/mongooseSearchPaths.js";
+const ZProjectIn = z.strictObject({
     name: z.string(),
     repos: z.array(ZRepoIn),
     isFullStack: z.boolean(),
 });
-const ZDbProject = z.object({
+const ZDbProject = z.strictObject({
     ...ZProjectIn.shape,
     _id: z.instanceof(Types.ObjectId),
     createdAt: z.instanceof(Date),
@@ -16,7 +17,7 @@ const ZDbProject = z.object({
     __v: z.number(),
     repos: z.array(ZDbRepo),
 });
-const ZProjectOut = z.object({
+const ZProjectOut = z.strictObject({
     ...ZDbProject.shape,
     repos: z.array(ZRepoOut),
 });
@@ -37,6 +38,46 @@ const ProjectSchema = new mongoose.Schema({
     timestamps: true,
     _id: true,
 });
+const ProjectSearchIndex = {
+    name: "ProjectsSearch",
+    definition: {
+        mappings: {
+            dynamic: false,
+            fields: {
+                name: {
+                    type: "autocomplete",
+                },
+                repos: {
+                    fields: {
+                        description: {
+                            fields: {
+                                en: {
+                                    type: "autocomplete",
+                                },
+                                fr: {
+                                    type: "autocomplete",
+                                },
+                            },
+                            type: "document",
+                        },
+                        displayName: {
+                            fields: {
+                                name: {
+                                    type: "autocomplete",
+                                },
+                            },
+                            type: "document",
+                        },
+                    },
+                    type: "document",
+                },
+            },
+        },
+    },
+    type: "search",
+};
+ProjectSchema.searchIndex(ProjectSearchIndex);
+const projectSearchPaths = extractSearchPaths(ProjectSearchIndex);
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {
     const allFrameworks = new Set();
@@ -78,4 +119,4 @@ function getAllPlatformsFromProjects(projects) {
         }
     })));
 }
-export { Project, ProjectSchema, ZProjectIn, ZProjectOut, getAllFrameworksFromProjects, getAllProgrammingLanguagesFromProjects, getAllPlatformsFromProjects, };
+export { Project, ProjectSchema, ZProjectIn, ZProjectOut, getAllFrameworksFromProjects, getAllProgrammingLanguagesFromProjects, getAllPlatformsFromProjects, ProjectSearchIndex, projectSearchPaths, };

@@ -4,6 +4,9 @@ const checkEnv = () => {
     if (!process.env.MONGODB_LOCAL_URI) {
         throw new Error("MONGODB_LOCAL_URI is not defined");
     }
+    if (!process.env.MONGODB_REMOTE_URI) {
+        throw new Error("MONGODB_REMOTE_URI is not defined");
+    }
     if (!process.env.PORT) {
         throw new Error("PORT is not defined");
     }
@@ -17,7 +20,7 @@ const checkEnv = () => {
         throw new Error("BASE_GITHUB_RAW_URL is not defined");
     }
     return {
-        MONGODB_LOCAL_URI: process.env.MONGODB_LOCAL_URI,
+        MONGODB_URI: process.env.MONGODB_REMOTE_URI, // Either use local or remote URI
         PORT: process.env.PORT,
         ADMIN_TOKEN: process.env.ADMIN_TOKEN,
         GITHUB_READ_TOKEN: process.env.GITHUB_READ_TOKEN,

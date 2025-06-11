@@ -9,7 +9,7 @@ import {
   IInternalServerErrorResponse,
 } from "./models/ITypedResponse.js";
 
-mongoose.connect(checkedEnv.MONGODB_LOCAL_URI);
+mongoose.connect(checkedEnv.MONGODB_URI);
 
 const app = express();
 

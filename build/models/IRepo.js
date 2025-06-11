@@ -9,7 +9,7 @@ import { frameworksKotlinMapping, ZEFrameworksKotlinIn, } from "./IFrameworkKotl
 import { frameworksPythonMapping, ZEFrameworksPythonIn, } from "./IFrameworkPython.js";
 import { platformsMapping, ZEPlatformsIn } from "./IPlatform.js";
 import { frameworksHTMLMapping, ZEFrameworksHTMLIn } from "./IFrameworkHTML.js";
-const ZRepoIn = z.object({
+const ZRepoIn = z.strictObject({
     displayName: ZDisplayName,
     owner: z.string(),
     repo: z.string(),
@@ -58,7 +58,7 @@ function findMatchingFrameworksValues(frameworkKey, frameworks) {
         return correspondingFramework;
     });
 }
-const ZDbRepo = z.object({
+const ZDbRepo = z.strictObject({
     ...ZRepoIn.shape,
     _id: z.instanceof(Types.ObjectId),
 });
