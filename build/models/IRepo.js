@@ -16,7 +16,7 @@ const ZRepoIn = z.object({
     path: z.string(),
     description: ZRepoDescription,
     programmingLanguages: z.array(ZEProgrammingLanguagesIn),
-    frameworksJavascript: z.array(ZEFrameworksJavascriptIn).optional(),
+    frameworksJavaScript: z.array(ZEFrameworksJavascriptIn).optional(),
     frameworksKotlin: z.array(ZEFrameworksKotlinIn).optional(),
     frameworksPython: z.array(ZEFrameworksPythonIn).optional(),
     frameworksCSS: z.array(ZEFrameworksCSSIn).optional(),
@@ -25,13 +25,58 @@ const ZRepoIn = z.object({
     youtube: z.string(),
     github: z.string(),
 });
-const ZDbRepo = ZRepoIn.extend({
+ZRepoIn.required()._input;
+const frameworksIn = (() => {
+    const keys = Object.keys(ZRepoIn.shape).filter((key) => key.startsWith("frameworks"));
+    return keys
+        .map((key) => ZRepoIn.shape[key].unwrap().element.options) // Unwrap optional to make the enum available
+        .flat()
+        .filter((framework) => framework !== undefined);
+})();
+function findMatchingFrameworkKey(programmingLanguage) {
+    const searchKey = `frameworks${programmingLanguage}`;
+    const foundKey = Object.keys(ZRepoIn.shape).find((key) => key.toLowerCase() === searchKey.toLowerCase());
+    if (!foundKey) {
+        throw new Error(`No matching framework key found for ${programmingLanguage}`);
+    }
+    return foundKey;
+}
+function findMatchingFrameworksValues(frameworkKey, frameworks) {
+    return frameworks.map((framework) => {
+        const parts = framework.match(/[A-Za-z0-9]+/g);
+        if (!parts) {
+            throw new Error(`Invalid framework format: ${framework}`);
+        }
+        const validFrameworks = ZRepoIn.shape[frameworkKey].unwrap().element.options;
+        if (!validFrameworks) {
+            throw new Error(`No valid frameworks found for key ${frameworkKey} in ZRepoIn`);
+        }
+        const correspondingFramework = validFrameworks.find((validFramework) => parts.every((part) => new RegExp(part, "i").test(validFramework)));
+        if (!correspondingFramework) {
+            throw new Error(`No corresponding framework found for ${framework} in ${JSON.stringify(validFrameworks)}`);
+        }
+        return correspondingFramework;
+    });
+}
+const ZDbRepo = z.object({
+    ...ZRepoIn.shape,
     _id: z.instanceof(Types.ObjectId),
 });
-const ZRepoOut = ZDbRepo.transform((repo) => {
+const ZPickedRepoIn = ZRepoIn.pick({
+    programmingLanguages: true,
+    frameworksJavaScript: true,
+    frameworksKotlin: true,
+    frameworksPython: true,
+    frameworksCSS: true,
+    frameworksHTML: true,
+    platforms: true,
+});
+const ZRepoTransformFunction = (repo) => {
     const { 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    frameworksJavascript, 
+    programmingLanguages, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    frameworksJavaScript, 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     frameworksKotlin, 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -39,7 +84,9 @@ const ZRepoOut = ZDbRepo.transform((repo) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     frameworksCSS, 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    frameworksHTML, ...repoWithoutFrameworks } = repo;
+    frameworksHTML, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    platforms, ...repoWithoutFrameworks } = repo;
     return {
         ...repoWithoutFrameworks,
         programmingLanguages: repo.programmingLanguages.map((language) => {
@@ -47,7 +94,7 @@ const ZRepoOut = ZDbRepo.transform((repo) => {
                 case "JAVASCRIPT":
                     return {
                         ...programmingLanguagesMapping[language],
-                        frameworks: repo.frameworksJavascript?.map((framework) => frameworksJavascriptMapping[framework]) || [],
+                        frameworks: repo.frameworksJavaScript?.map((framework) => frameworksJavascriptMapping[framework]) || [],
                     };
                 case "CSS":
                     return {
@@ -73,7 +120,19 @@ const ZRepoOut = ZDbRepo.transform((repo) => {
         }),
         platforms: repo.platforms.map((platform) => platformsMapping[platform]),
     };
-});
+};
+const ZRepoOut = ZDbRepo.transform(ZRepoTransformFunction);
+const frameworksOut = ZPickedRepoIn.transform(ZRepoTransformFunction)
+    .parse({
+    programmingLanguages: ZRepoIn.shape.programmingLanguages.element.options,
+    frameworksJavaScript: ZRepoIn.shape.frameworksJavaScript.unwrap().element.options,
+    frameworksKotlin: ZRepoIn.shape.frameworksKotlin.unwrap().element.options,
+    frameworksPython: ZRepoIn.shape.frameworksPython.unwrap().element.options,
+    frameworksCSS: ZRepoIn.shape.frameworksCSS.unwrap().element.options,
+    frameworksHTML: ZRepoIn.shape.frameworksHTML.unwrap().element.options,
+    platforms: ZRepoIn.shape.platforms.element.options,
+})
+    .programmingLanguages.flatMap((pl) => pl.frameworks.map((fw) => fw.name));
 const RepoSchema = new mongoose.Schema({
     displayName: {
         type: DisplayNameSchema,
@@ -102,7 +161,7 @@ const RepoSchema = new mongoose.Schema({
             required: true,
         },
     ],
-    frameworksJavascript: [
+    frameworksJavaScript: [
         {
             type: String,
             enum: ZEFrameworksJavascriptIn.options,
@@ -126,6 +185,12 @@ const RepoSchema = new mongoose.Schema({
             enum: ZEFrameworksCSSIn.options,
         },
     ],
+    frameworksHTML: [
+        {
+            type: String,
+            enum: ZEFrameworksHTMLIn.options,
+        },
+    ],
     platforms: [
         {
             type: String,
@@ -147,4 +212,4 @@ function getFrameworksFromRepo(repo) {
     repo.programmingLanguages.forEach((programmingLanguage) => allFrameworks.push(...programmingLanguage.frameworks.map((framework) => framework.name)));
     return allFrameworks;
 }
-export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo, getFrameworksFromRepo };
+export { ZRepoIn, ZRepoOut, RepoSchema, ZDbRepo, getFrameworksFromRepo, findMatchingFrameworkKey, findMatchingFrameworksValues, frameworksIn, frameworksOut, };

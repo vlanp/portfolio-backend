@@ -47,12 +47,25 @@ const programmingLanguagesMapping = {
   ICheckOutProgrammingLanguage
 >;
 
+const programmingLanguagesReverseMapping = Object.fromEntries(
+  Object.entries(programmingLanguagesMapping).map(([key, value]) => [
+    value.name,
+    key,
+  ])
+) as {
+  [K in keyof typeof programmingLanguagesMapping as (typeof programmingLanguagesMapping)[K]["name"]]: K;
+};
+
 type IProgrammingLanguagesMapping = typeof programmingLanguagesMapping;
 
 type IProgrammingLanguageOut =
   IProgrammingLanguagesMapping[IProgrammingLanguageIn];
 
-export { programmingLanguagesMapping, ZEProgrammingLanguagesIn };
+export {
+  programmingLanguagesMapping,
+  ZEProgrammingLanguagesIn,
+  programmingLanguagesReverseMapping,
+};
 
 export type {
   IProgrammingLanguageIn,

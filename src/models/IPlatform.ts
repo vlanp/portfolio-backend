@@ -50,9 +50,15 @@ const platformsMapping = {
   },
 } as const satisfies Record<IPlatformIn, ICheckOutPlatform>;
 
+const platformsReverseMapping = Object.fromEntries(
+  Object.entries(platformsMapping).map(([key, value]) => [value.name, key])
+) as {
+  [K in keyof typeof platformsMapping as (typeof platformsMapping)[K]["name"]]: K;
+};
+
 type IPlatformsMapping = typeof platformsMapping;
 
 type IPlaformOut = IPlatformsMapping[IPlatformIn];
 
 export type { IPlatformIn, IPlatformsMapping, IPlaformOut };
-export { ZEPlatformsIn, platformsMapping };
+export { ZEPlatformsIn, platformsMapping, platformsReverseMapping };

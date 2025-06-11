@@ -33,4 +33,8 @@ const programmingLanguagesMapping = {
         color: "#E34F26",
     },
 };
-export { programmingLanguagesMapping, ZEProgrammingLanguagesIn };
+const programmingLanguagesReverseMapping = Object.fromEntries(Object.entries(programmingLanguagesMapping).map(([key, value]) => [
+    value.name,
+    key,
+]));
+export { programmingLanguagesMapping, ZEProgrammingLanguagesIn, programmingLanguagesReverseMapping, };

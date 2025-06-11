@@ -39,4 +39,5 @@ const platformsMapping = {
         color: "#000000",
     },
 };
-export { ZEPlatformsIn, platformsMapping };
+const platformsReverseMapping = Object.fromEntries(Object.entries(platformsMapping).map(([key, value]) => [value.name, key]));
+export { ZEPlatformsIn, platformsMapping, platformsReverseMapping };

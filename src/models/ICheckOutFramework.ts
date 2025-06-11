@@ -1,5 +1,5 @@
-interface ICheckOutFramework {
-  name: string;
+interface ICheckOutFramework<T extends string = string> {
+  name: T;
   iconName: string;
   color: string;
 }

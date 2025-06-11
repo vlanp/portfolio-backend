@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument, Model, Types } from "mongoose";
 import {
   getFrameworksFromRepo,
   IDbRepo,
+  IFrameworkOut,
   RepoSchema,
   ZDbRepo,
   ZRepoIn,
@@ -9,11 +10,9 @@ import {
 } from "./IRepo.js";
 import z from "zod/v4";
 import { arrayDistinct, isStringArray } from "../utils/array.js";
-import {
-  IProgrammingLanguageOut,
-  programmingLanguagesMapping,
-} from "./IProgrammingLanguage.js";
 import { IPlaformOut, platformsMapping } from "./IPlatform.js";
+import { IAllProjectsFilters } from "./IProjectsFilters.js";
+import { IProgrammingLanguageOut } from "./IProgrammingLanguage.js";
 
 const ZProjectIn = z.object({
   name: z.string(),
@@ -23,7 +22,8 @@ const ZProjectIn = z.object({
 
 type IProjectIn = z.infer<typeof ZProjectIn>;
 
-const ZDbProject = ZProjectIn.extend({
+const ZDbProject = z.object({
+  ...ZProjectIn.shape,
   _id: z.instanceof(Types.ObjectId),
   createdAt: z.instanceof(Date),
   updatedAt: z.instanceof(Date),
@@ -33,7 +33,8 @@ const ZDbProject = ZProjectIn.extend({
 
 type IDbProject = z.infer<typeof ZDbProject>;
 
-const ZProjectOut = ZDbProject.extend({
+const ZProjectOut = z.object({
+  ...ZDbProject.shape,
   repos: z.array(ZRepoOut),
 });
 
@@ -87,22 +88,31 @@ function getAllFrameworksFromProjects(projects: IProjectOut[]): string[] {
 }
 
 function getAllProgrammingLanguagesFromProjects(
-  projects: IProjectIn[] | IProjectOut[] | IDbProject[]
-): IProgrammingLanguageOut["name"][] {
-  return arrayDistinct(
-    projects.flatMap((project) =>
-      project.repos.flatMap((repo) => {
-        const programmingLanguages = repo.programmingLanguages;
-        if (isStringArray(programmingLanguages)) {
-          return programmingLanguages.map(
-            (it) => programmingLanguagesMapping[it].name
-          );
-        } else {
-          return programmingLanguages.map((it) => it.name);
+  projects: IProjectOut[]
+): IAllProjectsFilters["programmingLanguages"] {
+  const languageMap = new Map<
+    IProgrammingLanguageOut["name"],
+    Set<IFrameworkOut>
+  >();
+
+  projects.forEach((project) => {
+    project.repos.forEach((repo) => {
+      repo.programmingLanguages.forEach((lang) => {
+        if (!languageMap.has(lang.name)) {
+          languageMap.set(lang.name, new Set<IFrameworkOut>());
         }
-      })
-    )
-  );
+
+        lang.frameworks.forEach((framework) => {
+          languageMap.get(lang.name)!.add(framework.name);
+        });
+      });
+    });
+  });
+
+  return Array.from(languageMap.entries()).map(([name, frameworksSet]) => ({
+    name,
+    frameworks: Array.from(frameworksSet).sort(),
+  }));
 }
 
 function getAllPlatformsFromProjects(

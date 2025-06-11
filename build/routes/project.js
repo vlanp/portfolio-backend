@@ -1,10 +1,13 @@
 import express from "express";
-import { getAllFrameworksFromProjects, getAllPlatformsFromProjects, getAllProgrammingLanguagesFromProjects, Project, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
+import { getAllPlatformsFromProjects, getAllProgrammingLanguagesFromProjects, Project, ZProjectIn, ZProjectOut, } from "../models/IProject.js";
 import isAdmin from "../middlewares/isAdmin.js";
 import { getContent, getDocsTree, getTags, } from "../utils/github.js";
 import { isValidObjectId } from "mongoose";
 import z from "zod/v4";
-import { ZRepoOut } from "../models/IRepo.js";
+import { findMatchingFrameworkKey, findMatchingFrameworksValues, ZRepoOut, } from "../models/IRepo.js";
+import { programmingLanguagesReverseMapping } from "../models/IProgrammingLanguage.js";
+import { platformsReverseMapping } from "../models/IPlatform.js";
+import { ZSelectedProjectsFilters, } from "../models/IProjectsFilters.js";
 const router = express.Router();
 router.post("/project", isAdmin, async (req, res) => {
     if (!req.body) {
@@ -31,8 +34,75 @@ router.post("/project", isAdmin, async (req, res) => {
     const addedProjectDb = await newDbProject.save();
     res.responsesFunc.sendCreatedResponse(addedProjectDb, "Project added successfully into the database");
 });
-router.get("/projects", async (req, res) => {
-    const dbProjects = await Project.find().lean();
+router.post("/projects", async (req, res) => {
+    const body = req.body;
+    let filters = undefined;
+    if (Object.keys(body).length !== 0) {
+        const bodyParseResult = ZSelectedProjectsFilters.safeParse(body);
+        if (!bodyParseResult.success) {
+            console.log(z.prettifyError(bodyParseResult.error));
+            res.responsesFunc.sendBadRequestResponse(z.prettifyError(bodyParseResult.error));
+            return;
+        }
+        filters = bodyParseResult.data;
+    }
+    let dbProjects;
+    if (!filters) {
+        dbProjects = await Project.find().lean();
+    }
+    else {
+        const programmingLanguages = filters.programmingLanguages
+            .map((programmingLanguage) => {
+            return {
+                name: {
+                    value: programmingLanguagesReverseMapping[programmingLanguage.name.value],
+                    isSelected: programmingLanguage.name.isSelected,
+                },
+                frameworks: programmingLanguage.frameworks,
+            };
+        })
+            .filter((programmingLanguage) => programmingLanguage !== null);
+        const selectedProgrammingLanguages = programmingLanguages
+            .filter((pl) => pl.name.isSelected)
+            .map((pl) => pl.name.value);
+        const platforms = filters.platforms.map((platform) => platformsReverseMapping[platform]);
+        const dbFilters = [];
+        if (selectedProgrammingLanguages.length > 0) {
+            dbFilters.push({
+                "repos.programmingLanguages": {
+                    [filters.filtersBehavior === "intersection" ? "$all" : "$in"]: selectedProgrammingLanguages,
+                },
+            });
+        }
+        if (platforms.length > 0) {
+            dbFilters.push({
+                "repos.platforms": {
+                    [filters.filtersBehavior === "intersection" ? "$all" : "$in"]: platforms,
+                },
+            });
+        }
+        programmingLanguages.forEach((pl, index) => {
+            const frameworks = filters.programmingLanguages[index].frameworks;
+            if (frameworks.length > 0) {
+                dbFilters.push({
+                    [`repos.${findMatchingFrameworkKey(pl.name.value)}`]: {
+                        [filters.filtersBehavior === "intersection" ? "$all" : "$in"]: findMatchingFrameworksValues(findMatchingFrameworkKey(pl.name.value), frameworks),
+                    },
+                });
+            }
+        });
+        console.log("dbFilters", dbFilters?.map((filter) => JSON.stringify(filter)));
+        if (!filters.filtersBehavior || filters.filtersBehavior === "union") {
+            dbProjects = await Project.find({
+                $or: dbFilters,
+            }).lean();
+        }
+        else {
+            dbProjects = await Project.find({
+                $and: dbFilters,
+            }).lean();
+        }
+    }
     const projectsOutParseResults = dbProjects.map((dbProject) => ZProjectOut.safeParse(dbProject));
     const projectsOut = projectsOutParseResults
         .filter((result) => result.success)
@@ -292,7 +362,6 @@ router.get("/projects/filters", async (req, res) => {
         .map((result) => result.data);
     const filters = {
         programmingLanguages: getAllProgrammingLanguagesFromProjects(projectsOut),
-        frameworks: getAllFrameworksFromProjects(projectsOut),
         platforms: getAllPlatformsFromProjects(projectsOut),
     };
     res.responsesFunc.sendOkResponse(filters);
