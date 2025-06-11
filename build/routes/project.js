@@ -10,6 +10,7 @@ import { platformsReverseMapping } from "../models/IPlatform.js";
 import { ZSelectedProjectsFilters, } from "../models/IProjectsFilters.js";
 import { arrayDistinctBy } from "../utils/array.js";
 import { searchDbWithIndex } from "../utils/mongooseSearch.js";
+import { ZELangs } from "../models/ILocalized.js";
 const router = express.Router();
 router.post("/project", isAdmin, async (req, res) => {
     if (!req.body) {
@@ -38,6 +39,13 @@ router.post("/project", isAdmin, async (req, res) => {
 });
 router.post("/projects", async (req, res) => {
     const body = req.body;
+    const { lang: unsafeLang } = req.query;
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+    if (!langParseResult.success) {
+        res.responsesFunc.sendBadRequestResponse(z.prettifyError(langParseResult.error));
+        return;
+    }
+    const lang = langParseResult.data;
     let filters = undefined;
     if (body && Object.keys(body).length !== 0) {
         const bodyParseResult = ZSelectedProjectsFilters.safeParse(body);
@@ -95,7 +103,7 @@ router.post("/projects", async (req, res) => {
             }
         });
         if (search) {
-            dbProjectsPromises.push(searchDbWithIndex(search, Project, ProjectSearchIndex.name, projectSearchPaths));
+            dbProjectsPromises.push(searchDbWithIndex(search, Project, ProjectSearchIndex.name, Object.values(projectSearchPaths[lang])));
         }
         if (!filters.filtersBehavior || filters.filtersBehavior === "union") {
             if (dbFilters.length > 0 || !search) {
@@ -133,11 +141,13 @@ router.post("/projects", async (req, res) => {
 });
 router.get("/repo/:repoid/tag/:sha", async (req, res) => {
     const { repoid, sha } = req.params;
-    const { lang } = req.query;
-    if (typeof lang !== "string") {
-        res.responsesFunc.sendBadRequestResponse("lang query params must be a string");
+    const { lang: unsafeLang } = req.query;
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+    if (!langParseResult.success) {
+        res.responsesFunc.sendBadRequestResponse(z.prettifyError(langParseResult.error));
         return;
     }
+    const lang = langParseResult.data;
     if (!isValidObjectId(repoid)) {
         res.responsesFunc.sendBadRequestResponse("Invalid repo id");
         return;
@@ -290,13 +300,15 @@ router.get("/repo/:repoid/fileContent/:filepath", async (req, res) => {
 });
 router.get("/repo/:repoid/didFileExist/:filepath", async (req, res) => {
     const { repoid, filepath } = req.params;
-    const { sha, lang } = req.query;
-    if (typeof sha !== "string") {
-        res.responsesFunc.sendBadRequestResponse("sha query params must be a string");
+    const { sha, lang: unsafeLang } = req.query;
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+    if (!langParseResult.success) {
+        res.responsesFunc.sendBadRequestResponse(z.prettifyError(langParseResult.error));
         return;
     }
-    if (typeof lang !== "string") {
-        res.responsesFunc.sendBadRequestResponse("lang query params must be a string");
+    const lang = langParseResult.data;
+    if (typeof sha !== "string") {
+        res.responsesFunc.sendBadRequestResponse("sha query params must be a string");
         return;
     }
     if (!isValidObjectId(repoid)) {

@@ -43,6 +43,7 @@ import {
 } from "../models/IProjectsFilters.js";
 import { arrayDistinctBy } from "../utils/array.js";
 import { searchDbWithIndex } from "../utils/mongooseSearch.js";
+import { ZELangs } from "../models/ILocalized.js";
 
 const router = express.Router();
 
@@ -102,6 +103,18 @@ router.post(
     res: IBadRequestResponse | IOkResponse<IProjectOut[]>
   ) => {
     const body = req.body;
+    const { lang: unsafeLang } = req.query;
+
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+
+    if (!langParseResult.success) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(langParseResult.error)
+      );
+      return;
+    }
+
+    const lang = langParseResult.data;
 
     let filters: ISelectedProjectsFilters | undefined = undefined;
     if (body && Object.keys(body).length !== 0) {
@@ -182,7 +195,7 @@ router.post(
             search,
             Project,
             ProjectSearchIndex.name,
-            projectSearchPaths
+            Object.values(projectSearchPaths[lang])
           )
         );
       }
@@ -240,14 +253,19 @@ router.get(
     res: IOkResponse<ITagContent> | IBadRequestResponse | INotFoundResponse
   ) => {
     const { repoid, sha } = req.params;
-    const { lang } = req.query;
+    const { lang: unsafeLang } = req.query;
 
-    if (typeof lang !== "string") {
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+
+    if (!langParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
-        "lang query params must be a string"
+        z.prettifyError(langParseResult.error)
       );
       return;
     }
+
+    const lang = langParseResult.data;
+
     if (!isValidObjectId(repoid)) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
         "Invalid repo id"
@@ -499,19 +517,26 @@ router.get(
   ) => {
     const { repoid, filepath } = req.params;
 
-    const { sha, lang } = req.query;
+    const { sha, lang: unsafeLang } = req.query;
+
+    const langParseResult = ZELangs.safeParse(unsafeLang);
+
+    if (!langParseResult.success) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(langParseResult.error)
+      );
+      return;
+    }
+
+    const lang = langParseResult.data;
+
     if (typeof sha !== "string") {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
         "sha query params must be a string"
       );
       return;
     }
-    if (typeof lang !== "string") {
-      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
-        "lang query params must be a string"
-      );
-      return;
-    }
+
     if (!isValidObjectId(repoid)) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
         "Invalid repo id"

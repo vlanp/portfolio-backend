@@ -1,9 +1,4 @@
-import mongoose, {
-  HydratedDocument,
-  Model,
-  SearchIndexDescription,
-  Types,
-} from "mongoose";
+import mongoose, { HydratedDocument, Model, Types } from "mongoose";
 import {
   getFrameworksFromRepo,
   IDbRepo,
@@ -18,7 +13,12 @@ import { arrayDistinct, isStringArray } from "../utils/array.js";
 import { IPlaformOut, platformsMapping } from "./IPlatform.js";
 import { IAllProjectsFilters } from "./IProjectsFilters.js";
 import { IProgrammingLanguageOut } from "./IProgrammingLanguage.js";
-import { extractSearchPaths } from "../utils/mongooseSearchPaths.js";
+import {
+  extractSearchPaths,
+  IPathsObject,
+  ITypedSearchIndex,
+} from "../utils/mongooseSearchPaths.js";
+import { ILang, langs } from "./ILocalized.js";
 
 const ZProjectIn = z.strictObject({
   name: z.string(),
@@ -112,11 +112,23 @@ const ProjectSearchIndex = {
     },
   },
   type: "search",
-} as const satisfies SearchIndexDescription;
+} as const satisfies ITypedSearchIndex;
 
 ProjectSchema.searchIndex(ProjectSearchIndex);
 
-const projectSearchPaths = extractSearchPaths(ProjectSearchIndex);
+const projectSearchPaths = langs.reduce(
+  (acc, l) => {
+    acc[l] = extractSearchPaths(ProjectSearchIndex, "autocomplete", l);
+    return acc;
+  },
+  {} as {
+    [T in ILang]: IPathsObject<
+      (typeof ProjectSearchIndex)["definition"]["mappings"]["fields"],
+      "autocomplete",
+      T
+    >;
+  }
+);
 
 const Project = mongoose.model<IProjectIn, IProjectModel>(
   "Project",

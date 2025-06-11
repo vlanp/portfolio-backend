@@ -1,9 +1,10 @@
-import mongoose, { Types, } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { getFrameworksFromRepo, RepoSchema, ZDbRepo, ZRepoIn, ZRepoOut, } from "./IRepo.js";
 import z from "zod/v4";
 import { arrayDistinct, isStringArray } from "../utils/array.js";
 import { platformsMapping } from "./IPlatform.js";
-import { extractSearchPaths } from "../utils/mongooseSearchPaths.js";
+import { extractSearchPaths, } from "../utils/mongooseSearchPaths.js";
+import { langs } from "./ILocalized.js";
 const ZProjectIn = z.strictObject({
     name: z.string(),
     repos: z.array(ZRepoIn),
@@ -77,7 +78,10 @@ const ProjectSearchIndex = {
     type: "search",
 };
 ProjectSchema.searchIndex(ProjectSearchIndex);
-const projectSearchPaths = extractSearchPaths(ProjectSearchIndex);
+const projectSearchPaths = langs.reduce((acc, l) => {
+    acc[l] = extractSearchPaths(ProjectSearchIndex, "autocomplete", l);
+    return acc;
+}, {});
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {
     const allFrameworks = new Set();
