@@ -130,6 +130,13 @@ const projectSearchPaths = langs.reduce(
   }
 );
 
+const projectSearchPathsArray = langs.map((l) =>
+  extractSearchPaths(ProjectSearchIndex, "autocomplete", l)
+);
+
+type IProjectSearchPath =
+  (typeof projectSearchPathsArray)[number][keyof (typeof projectSearchPathsArray)[number]];
+
 const Project = mongoose.model<IProjectIn, IProjectModel>(
   "Project",
   ProjectSchema
@@ -193,7 +200,7 @@ function getAllPlatformsFromProjects(
   );
 }
 
-export type { IProjectIn, IProjectOut, IDbProject };
+export type { IProjectIn, IProjectOut, IDbProject, IProjectSearchPath };
 export {
   Project,
   ProjectSchema,
@@ -204,4 +211,5 @@ export {
   getAllPlatformsFromProjects,
   ProjectSearchIndex,
   projectSearchPaths,
+  projectSearchPathsArray,
 };

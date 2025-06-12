@@ -9,7 +9,7 @@ import { programmingLanguagesReverseMapping } from "../models/IProgrammingLangua
 import { platformsReverseMapping } from "../models/IPlatform.js";
 import { ZSelectedProjectsFilters, } from "../models/IProjectsFilters.js";
 import { arrayDistinctBy } from "../utils/array.js";
-import { searchDbWithIndex } from "../utils/mongooseSearch.js";
+import { isDocumentWithHighlights, searchDbWithIndex, } from "../utils/mongooseSearch.js";
 import { ZELangs } from "../models/ILocalized.js";
 const router = express.Router();
 router.post("/project", isAdmin, async (req, res) => {
@@ -55,6 +55,7 @@ router.post("/projects", async (req, res) => {
         }
         filters = bodyParseResult.data;
     }
+    const paths = Object.values(projectSearchPaths[lang]);
     let dbProjects = [];
     const dbProjectsPromises = [];
     if (!filters) {
@@ -103,7 +104,7 @@ router.post("/projects", async (req, res) => {
             }
         });
         if (search) {
-            dbProjectsPromises.push(searchDbWithIndex(search, Project, ProjectSearchIndex.name, Object.values(projectSearchPaths[lang])));
+            dbProjectsPromises.push(searchDbWithIndex(search, Project, ProjectSearchIndex.name, paths));
         }
         if (!filters.filtersBehavior || filters.filtersBehavior === "union") {
             if (dbFilters.length > 0 || !search) {
@@ -112,6 +113,8 @@ router.post("/projects", async (req, res) => {
                 }).lean());
             }
             const results = await Promise.all(dbProjectsPromises);
+            // console.log("YOOOOO : ", JSON.stringify(results, undefined, 2));
+            // If search exist, the result will be kept in priority (purpose: keep highlights)
             dbProjects = arrayDistinctBy(results.flat(), (project) => project._id.toString());
         }
         else {
@@ -127,17 +130,47 @@ router.post("/projects", async (req, res) => {
                 dbProjects = firstResult;
             }
             else {
+                // Keeps results with highlights in priority
                 dbProjects = firstResult.filter((project) => secondResult
                     .map((project) => project._id.toString())
                     .includes(project._id.toString()));
             }
         }
     }
-    const projectsOutParseResults = dbProjects.map((dbProject) => ZProjectOut.safeParse(dbProject));
-    const projectsOut = projectsOutParseResults
-        .filter((result) => result.success)
-        .map((result) => result.data);
-    res.responsesFunc.sendOkResponse(projectsOut);
+    const unsafeProjectsOut = dbProjects.map((dbProject) => {
+        if ("highlights" in dbProject) {
+            const dbProjectParseResult = ZProjectOut.safeParse(dbProject.document);
+            if (!dbProjectParseResult.success) {
+                return null;
+            }
+            return {
+                ...dbProject,
+                document: dbProjectParseResult.data,
+            };
+        }
+        const dbProjectParseResult = ZProjectOut.safeParse(dbProject);
+        if (!dbProjectParseResult.success) {
+            return null;
+        }
+        return dbProjectParseResult.data;
+    });
+    const projectsOutWithHighlights = {
+        documents: [],
+        documentsHighlights: [],
+    };
+    unsafeProjectsOut
+        .filter((unsafeProjectOut) => unsafeProjectOut !== null)
+        .forEach((p) => {
+        if (isDocumentWithHighlights(p)) {
+            const { document, ...documentHighlight } = p;
+            projectsOutWithHighlights.documents.push(document);
+            projectsOutWithHighlights.documentsHighlights.push(documentHighlight);
+        }
+        else {
+            projectsOutWithHighlights.documents.push(p);
+        }
+    });
+    res.responsesFunc.sendOkResponse(projectsOutWithHighlights);
 });
 router.get("/repo/:repoid/tag/:sha", async (req, res) => {
     const { repoid, sha } = req.params;

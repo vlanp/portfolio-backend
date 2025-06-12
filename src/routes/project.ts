@@ -5,6 +5,7 @@ import {
   IDbProject,
   IProjectIn,
   IProjectOut,
+  IProjectSearchPath,
   Project,
   ProjectSearchIndex,
   projectSearchPaths,
@@ -42,7 +43,12 @@ import {
   ZSelectedProjectsFilters,
 } from "../models/IProjectsFilters.js";
 import { arrayDistinctBy } from "../utils/array.js";
-import { searchDbWithIndex } from "../utils/mongooseSearch.js";
+import {
+  IDocumentsWithHighlights,
+  IDocumentWithHighlights,
+  isDocumentWithHighlights,
+  searchDbWithIndex,
+} from "../utils/mongooseSearch.js";
 import { ZELangs } from "../models/ILocalized.js";
 
 const router = express.Router();
@@ -100,7 +106,9 @@ router.post(
   "/projects",
   async (
     req: Request,
-    res: IBadRequestResponse | IOkResponse<IProjectOut[]>
+    res:
+      | IBadRequestResponse
+      | IOkResponse<IDocumentsWithHighlights<IProjectOut, IProjectSearchPath[]>>
   ) => {
     const body = req.body;
     const { lang: unsafeLang } = req.query;
@@ -127,8 +135,15 @@ router.post(
       }
       filters = bodyParseResult.data;
     }
-    let dbProjects: IDbProject[] = [];
-    const dbProjectsPromises: Promise<IDbProject[]>[] = [];
+    const paths = Object.values(projectSearchPaths[lang]);
+    let dbProjects: (
+      | IDbProject
+      | IDocumentWithHighlights<IDbProject, typeof paths>
+    )[] = [];
+    const dbProjectsPromises: (
+      | Promise<IDbProject[]>
+      | Promise<IDocumentWithHighlights<IDbProject, typeof paths>[]>
+    )[] = [];
     if (!filters) {
       dbProjects = await Project.find().lean();
     } else {
@@ -191,12 +206,7 @@ router.post(
 
       if (search) {
         dbProjectsPromises.push(
-          searchDbWithIndex(
-            search,
-            Project,
-            ProjectSearchIndex.name,
-            Object.values(projectSearchPaths[lang])
-          )
+          searchDbWithIndex(search, Project, ProjectSearchIndex.name, paths)
         );
       }
 
@@ -209,6 +219,8 @@ router.post(
           );
         }
         const results = await Promise.all(dbProjectsPromises);
+        // console.log("YOOOOO : ", JSON.stringify(results, undefined, 2));
+        // If search exist, the result will be kept in priority (purpose: keep highlights)
         dbProjects = arrayDistinctBy(results.flat(), (project) =>
           project._id.toString()
         );
@@ -222,10 +234,11 @@ router.post(
         }
         const results = await Promise.all(dbProjectsPromises);
         const firstResult = results[0];
-        const secondResult: IDbProject[] | undefined = results[1] || undefined;
+        const secondResult = results[1] || undefined;
         if (!secondResult) {
           dbProjects = firstResult;
         } else {
+          // Keeps results with highlights in priority
           dbProjects = firstResult.filter((project) =>
             secondResult
               .map((project) => project._id.toString())
@@ -234,15 +247,50 @@ router.post(
         }
       }
     }
-    const projectsOutParseResults = dbProjects.map((dbProject) =>
-      ZProjectOut.safeParse(dbProject)
-    );
-    const projectsOut: IProjectOut[] = projectsOutParseResults
-      .filter((result) => result.success)
-      .map((result) => result.data);
-    (res as IOkResponse<IProjectOut[]>).responsesFunc.sendOkResponse(
-      projectsOut
-    );
+
+    const unsafeProjectsOut = dbProjects.map((dbProject) => {
+      if ("highlights" in dbProject) {
+        const dbProjectParseResult = ZProjectOut.safeParse(dbProject.document);
+        if (!dbProjectParseResult.success) {
+          return null;
+        }
+        return {
+          ...dbProject,
+          document: dbProjectParseResult.data,
+        };
+      }
+      const dbProjectParseResult = ZProjectOut.safeParse(dbProject);
+      if (!dbProjectParseResult.success) {
+        return null;
+      }
+      return dbProjectParseResult.data;
+    });
+
+    const projectsOutWithHighlights: IDocumentsWithHighlights<
+      IProjectOut,
+      IProjectSearchPath[]
+    > = {
+      documents: [],
+      documentsHighlights: [],
+    };
+
+    unsafeProjectsOut
+      .filter((unsafeProjectOut) => unsafeProjectOut !== null)
+      .forEach((p) => {
+        if (isDocumentWithHighlights(p)) {
+          const { document, ...documentHighlight } = p;
+          projectsOutWithHighlights.documents.push(document);
+          projectsOutWithHighlights.documentsHighlights.push(documentHighlight);
+        } else {
+          projectsOutWithHighlights.documents.push(p);
+        }
+      });
+
+    (
+      res as IOkResponse<
+        IDocumentsWithHighlights<IProjectOut, IProjectSearchPath[]>
+      >
+    ).responsesFunc.sendOkResponse(projectsOutWithHighlights);
   }
 );
 

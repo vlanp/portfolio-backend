@@ -82,6 +82,7 @@ const projectSearchPaths = langs.reduce((acc, l) => {
     acc[l] = extractSearchPaths(ProjectSearchIndex, "autocomplete", l);
     return acc;
 }, {});
+const projectSearchPathsArray = langs.map((l) => extractSearchPaths(ProjectSearchIndex, "autocomplete", l));
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {
     const allFrameworks = new Set();
@@ -123,4 +124,4 @@ function getAllPlatformsFromProjects(projects) {
         }
     })));
 }
-export { Project, ProjectSchema, ZProjectIn, ZProjectOut, getAllFrameworksFromProjects, getAllProgrammingLanguagesFromProjects, getAllPlatformsFromProjects, ProjectSearchIndex, projectSearchPaths, };
+export { Project, ProjectSchema, ZProjectIn, ZProjectOut, getAllFrameworksFromProjects, getAllProgrammingLanguagesFromProjects, getAllPlatformsFromProjects, ProjectSearchIndex, projectSearchPaths, projectSearchPathsArray, };
