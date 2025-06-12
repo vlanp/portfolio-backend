@@ -14,6 +14,8 @@ function searchDbWithIndex<T>(
     if (limit && limit > 0) {
       pipeline.push({ $limit: limit });
     }
+    console.log(JSON.stringify(pipeline, undefined, 2));
+
     return pipeline;
   };
 
@@ -53,7 +55,7 @@ function searchDbWithIndex<T>(
         createPipeline({
           $search: {
             index: indexName,
-            compound: compoundsClauses[0],
+            ...compoundsClauses[0],
           },
         })
       );

@@ -151,7 +151,12 @@ function extractSearchPaths<
           const pathParts = fullPath.split(".");
           const lastPart = pathParts[pathParts.length - 1];
 
-          if (lastPart === language || language === "all") {
+          if (["en", "fr"].includes(lastPart)) {
+            if (lastPart === language) {
+              const key = fullPath.toUpperCase().replace(/\./g, "_");
+              paths[key] = fullPath;
+            }
+          } else {
             const key = fullPath.toUpperCase().replace(/\./g, "_");
             paths[key] = fullPath;
           }
@@ -221,9 +226,9 @@ export type {
   IExtractPathsRecursive,
   IFieldConfig,
   IFieldType,
-  IIsLocalizedFields,
   IObjectFieldConfig,
   IPathToKey,
   IPathsObject,
   ITypedSearchIndex,
+  IIsLocalizedFields,
 };
