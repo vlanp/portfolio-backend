@@ -1,4 +1,5 @@
-import { ILang } from "../models/ILocalized";
+import { ILang, langs } from "../models/ILocalized.js";
+import { SearchIndexDescription } from "mongoose";
 
 type IFieldType =
   | "autocomplete"
@@ -11,224 +12,188 @@ type IFieldType =
   | "object";
 
 interface IBaseFieldConfig {
-  type: IFieldType;
+  type: Exclude<IFieldType, "document" | "object">;
+  analyzer?: string;
 }
 
-interface IDocumentFieldConfig extends IBaseFieldConfig {
-  type: "document";
-  fields?: Record<string, IFieldConfig>;
+interface IDocumentFieldConfig<T extends Record<string, unknown>> {
+  type: Extract<IFieldType, "document">;
+  fields: {
+    [K in keyof T]?: IFieldConfig<T[K]>;
+  };
 }
 
-interface IObjectFieldConfig extends IBaseFieldConfig {
-  type: "object";
-  fields?: Record<string, IFieldConfig>;
+interface IObjectFieldConfig<T extends Record<string, unknown>> {
+  type: Extract<IFieldType, "object">;
+  fields: {
+    [K in keyof T]?: IFieldConfig<T[K]>;
+  };
 }
 
-type IFieldConfig =
-  | IBaseFieldConfig
-  | IDocumentFieldConfig
-  | IObjectFieldConfig;
+type IFieldConfig<T> = T extends Record<string, unknown>
+  ? IDocumentFieldConfig<T> | IObjectFieldConfig<T>
+  : IBaseFieldConfig;
 
-interface ITypedSearchIndex<
-  T extends Record<string, IFieldConfig> = Record<string, IFieldConfig>
-> {
-  name?: string;
+interface ITypedSearchIndex<T extends Record<string, unknown>>
+  extends SearchIndexDescription {
+  name: string;
   definition: {
+    analyzer: string;
+    searchAnalyzer: string;
     mappings: {
       dynamic?: boolean;
-      fields: T;
+      fields: IFields<T>;
     };
   };
   type?: "search" | "vectorSearch";
 }
 
-type IIsLocalizedFields<T> = T extends Record<string, IFieldConfig>
-  ? ILang extends keyof T
-    ? true
-    : false
-  : false;
-
-type IExtractPathsRecursive<
-  T extends Record<string, IFieldConfig>,
-  TargetType extends IFieldType,
-  Lang extends ILang | "all" = "all",
-  Prefix extends string = ""
-> = {
-  [K in keyof T]: T[K] extends { type: TargetType }
-    ? Prefix extends ""
-      ? K
-      : `${Prefix}.${string & K}`
-    : T[K] extends { type: "document" | "object"; fields: infer F }
-    ? F extends Record<string, IFieldConfig>
-      ? IIsLocalizedFields<F> extends true
-        ? Lang extends "all"
-          ? IExtractPathsRecursive<
-              F,
-              TargetType,
-              Lang,
-              Prefix extends "" ? string & K : `${Prefix}.${string & K}`
-            >
-          : Lang extends keyof F
-          ? F[Lang] extends { type: TargetType }
-            ? Prefix extends ""
-              ? `${string & K}.${string & Lang}`
-              : `${Prefix}.${string & K}.${string & Lang}`
-            : F[Lang] extends {
-                type: "document" | "object";
-                fields: infer SubF;
-              }
-            ? SubF extends Record<string, IFieldConfig>
-              ? IExtractPathsRecursive<
-                  SubF,
-                  TargetType,
-                  Lang,
-                  Prefix extends ""
-                    ? `${string & K}.${string & Lang}`
-                    : `${Prefix}.${string & K}.${string & Lang}`
-                >
-              : never
-            : never
-          : never
-        : IExtractPathsRecursive<
-            F,
-            TargetType,
-            Lang,
-            Prefix extends "" ? string & K : `${Prefix}.${string & K}`
-          >
-      : never
-    : never;
-}[keyof T];
-
-type IExtractPaths<
-  T extends Record<string, IFieldConfig>,
-  TargetType extends IFieldType,
-  Lang extends ILang | "all" = "all"
-> = IExtractPathsRecursive<T, TargetType, Lang> extends string
-  ? IExtractPathsRecursive<T, TargetType, Lang>
-  : never;
-
-type IPathToKey<T extends string> = Uppercase<
-  T extends `${infer A}.${infer B}` ? `${A}_${IPathToKey<B>}` : T
->;
-
-type IPathsObject<
-  T extends Record<string, IFieldConfig>,
-  TargetType extends IFieldType,
-  Lang extends ILang | "all" = "all"
-> = {
-  [K in IExtractPaths<T, TargetType, Lang> as IPathToKey<K>]: K;
+type IRemoveArray<T extends Record<string, unknown>> = {
+  [K in keyof T]: T[K] extends Array<infer U>
+    ? U extends Record<string, unknown>
+      ? IRemoveArray<U>
+      : U
+    : T[K] extends Record<string, unknown>
+    ? IRemoveArray<T[K]>
+    : T[K];
 };
 
+type IFields<T extends Record<string, unknown>> = {
+  [K in keyof T]?: IFieldConfig<IRemoveArray<T>[K]>;
+};
+
+type IIsLocalizedObject<T extends Record<string, unknown>> =
+  keyof T extends ILang ? true : false;
+
+type IFilterLocalizedFields<
+  T extends Record<string, unknown>,
+  Lang extends ILang
+> = IIsLocalizedObject<T> extends true ? Pick<T, Lang> : T;
+
+// Keys which are symbols are excluded
+type IPathChained<
+  T extends Record<string, unknown>,
+  K extends IFields<T>,
+  Lang extends ILang,
+  ToUpperCase extends boolean,
+  PathSeparator extends "_" | ".",
+  Q = IRemoveArray<T>
+> = {
+  [H in keyof K & keyof Q]: H extends string | number
+    ? Q[H] extends Record<string, unknown>
+      ? K[H] extends { fields: infer NestedFields }
+        ? NestedFields extends IFields<Q[H]>
+          ? IFilterLocalizedFields<
+              NestedFields,
+              Lang
+            > extends infer FilteredFields
+            ? FilteredFields extends IFields<Q[H]>
+              ? `${ToUpperCase extends true
+                  ? Uppercase<`${H}`>
+                  : `${H}`}${PathSeparator}${IPathChained<
+                  Q[H],
+                  FilteredFields,
+                  Lang,
+                  ToUpperCase,
+                  PathSeparator
+                >}`
+              : `${ToUpperCase extends true ? Uppercase<`${H}`> : `${H}`}`
+            : `${ToUpperCase extends true ? Uppercase<`${H}`> : `${H}`}`
+          : `${ToUpperCase extends true ? Uppercase<`${H}`> : `${H}`}`
+        : `${ToUpperCase extends true ? Uppercase<`${H}`> : `${H}`}`
+      : `${ToUpperCase extends true ? Uppercase<`${H}`> : `${H}`}`
+    : never;
+}[keyof K & keyof Q];
+
+type IExtractSearchPaths<
+  T extends Record<string, unknown>,
+  Index extends ITypedSearchIndex<T>,
+  Lang extends ILang
+> = Record<
+  IPathChained<T, Index["definition"]["mappings"]["fields"], Lang, true, "_">,
+  IPathChained<T, Index["definition"]["mappings"]["fields"], Lang, false, ".">
+>;
+
 function extractSearchPaths<
-  T extends Record<string, IFieldConfig>,
-  TargetType extends IFieldType = "autocomplete",
-  Lang extends ILang | "all" = "all"
->(
-  searchIndex: ITypedSearchIndex<T>,
-  filterType: TargetType = "autocomplete" as TargetType,
-  language?: Lang
-): IPathsObject<T, TargetType, Lang> {
-  const paths: Record<string, string> = {};
+  T extends Record<string, unknown>,
+  Index extends ITypedSearchIndex<T>,
+  Lang extends ILang
+>(index: Index, lang: Lang): IExtractSearchPaths<T, Index, Lang> {
+  const result = {} as IExtractSearchPaths<T, Index, Lang>;
 
-  if (!searchIndex.definition?.mappings?.fields) {
-    return paths as IPathsObject<T, TargetType, Lang>;
-  }
-
-  function isLocalizedFields(fields: Record<string, IFieldConfig>): boolean {
-    const langKeys: ILang[] = ["en", "fr"];
-    return langKeys.every((lang) => lang in fields);
-  }
-
-  function traverseFields(
-    fields: Record<string, IFieldConfig>,
-    currentPath: string = ""
+  function processFields<U extends Record<string, unknown>>(
+    fields: IFields<U>,
+    prefixUpper: string = "",
+    prefixLower: string = ""
   ): void {
-    for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-      const fullPath = currentPath ? `${currentPath}.${fieldName}` : fieldName;
+    for (const key in fields) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        const field = fields[key];
+        const upperKey = key.toUpperCase();
+        const lowerKey = key;
 
-      if (fieldConfig.type === filterType) {
-        if (language && language !== "all") {
-          const pathParts = fullPath.split(".");
-          const lastPart = pathParts[pathParts.length - 1];
+        const upperPath = prefixUpper ? `${prefixUpper}_${upperKey}` : upperKey;
+        const lowerPath = prefixLower ? `${prefixLower}.${lowerKey}` : lowerKey;
 
-          if (["en", "fr"].includes(lastPart)) {
-            if (lastPart === language) {
-              const key = fullPath.toUpperCase().replace(/\./g, "_");
-              paths[key] = fullPath;
+        if (field && typeof field === "object" && "type" in field) {
+          if (field.type === "document" || field.type === "object") {
+            // Handle nested fields
+            if ("fields" in field && field.fields) {
+              const fieldKeys = Object.keys(field.fields);
+              const isLocalized = fieldKeys.every((k) =>
+                (langs as readonly string[]).includes(k)
+              );
+
+              if (isLocalized) {
+                const localizedFields = {
+                  [lang]: field.fields[lang],
+                } as IFields<Record<string, unknown>>;
+                processFields(localizedFields, upperPath, lowerPath);
+              } else {
+                processFields(
+                  field.fields as IFields<Record<string, unknown>>,
+                  upperPath,
+                  lowerPath
+                );
+              }
             }
           } else {
-            const key = fullPath.toUpperCase().replace(/\./g, "_");
-            paths[key] = fullPath;
+            (result as Record<string, string>)[upperPath] = lowerPath;
           }
-        } else {
-          const key = fullPath.toUpperCase().replace(/\./g, "_");
-          paths[key] = fullPath;
-        }
-      }
-
-      if (
-        (fieldConfig.type === "document" || fieldConfig.type === "object") &&
-        "fields" in fieldConfig &&
-        fieldConfig.fields
-      ) {
-        if (
-          language &&
-          language !== "all" &&
-          isLocalizedFields(fieldConfig.fields)
-        ) {
-          if (language in fieldConfig.fields) {
-            const langField = fieldConfig.fields[language];
-            const langPath = `${fullPath}.${language}`;
-
-            if (langField.type === filterType) {
-              const key = langPath.toUpperCase().replace(/\./g, "_");
-              paths[key] = langPath;
-            }
-
-            if (
-              (langField.type === "document" || langField.type === "object") &&
-              "fields" in langField &&
-              langField.fields
-            ) {
-              traverseFields(langField.fields, langPath);
-            }
-          }
-        } else {
-          traverseFields(fieldConfig.fields, fullPath);
         }
       }
     }
   }
 
-  traverseFields(searchIndex.definition.mappings.fields);
+  processFields(
+    index.definition.mappings.fields as IFields<Record<string, unknown>>
+  );
 
-  return paths as IPathsObject<T, TargetType, Lang>;
+  return result;
 }
 
-function extractSearchPathsArray<
-  T extends Record<string, IFieldConfig>,
-  TargetType extends IFieldType = "autocomplete",
-  Lang extends ILang | "all" = "all"
->(
-  searchIndex: ITypedSearchIndex<T>,
-  filterType: TargetType = "autocomplete" as TargetType,
-  language?: Lang
-): IExtractPaths<T, TargetType, Lang>[] {
-  const pathsObject = extractSearchPaths(searchIndex, filterType, language);
-  return Object.values(pathsObject) as IExtractPaths<T, TargetType, Lang>[];
-}
+// See https://github.com/microsoft/TypeScript/issues/51680#issuecomment-1330425668
 
-export { extractSearchPaths, extractSearchPathsArray };
+// interface MyObject extends Record<string, unknown> {
+//   name: string;
+//   0: string; // ← Clé numérique autorisée !
+//   [Symbol.species]: string; // ← Symbol autorisé !
+// }
+
+// type IFields<
+//   H extends ITypedSearchIndex<T>,
+//   T extends Record<string, unknown>
+// > = H["definition"]["mappings"]["fields"];
+
+// type IChildsFields<H extends ITypedSearchIndex<T>, T extends Record<string, unknown>, Q extends IFields<H,T>> = Q extends Record<string, IFieldConfig<>>
+
+export { extractSearchPaths };
 export type {
   IBaseFieldConfig,
   IDocumentFieldConfig,
-  IExtractPaths,
-  IExtractPathsRecursive,
   IFieldConfig,
   IFieldType,
   IObjectFieldConfig,
-  IPathToKey,
-  IPathsObject,
   ITypedSearchIndex,
-  IIsLocalizedFields,
+  IExtractSearchPaths,
 };

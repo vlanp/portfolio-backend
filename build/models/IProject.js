@@ -42,6 +42,8 @@ const ProjectSchema = new mongoose.Schema({
 const ProjectSearchIndex = {
     name: "ProjectsSearch",
     definition: {
+        analyzer: "lucene.standard",
+        searchAnalyzer: "lucene.standard",
         mappings: {
             dynamic: false,
             fields: {
@@ -54,9 +56,11 @@ const ProjectSearchIndex = {
                             fields: {
                                 en: {
                                     type: "autocomplete",
+                                    analyzer: "lucene.english",
                                 },
                                 fr: {
                                     type: "autocomplete",
+                                    analyzer: "lucene.french",
                                 },
                             },
                             type: "document",
@@ -79,10 +83,11 @@ const ProjectSearchIndex = {
 };
 ProjectSchema.searchIndex(ProjectSearchIndex);
 const projectSearchPaths = langs.reduce((acc, l) => {
-    acc[l] = extractSearchPaths(ProjectSearchIndex, "autocomplete", l);
+    acc[l] = extractSearchPaths(ProjectSearchIndex, l);
     return acc;
 }, {});
-const projectSearchPathsArray = langs.map((l) => extractSearchPaths(ProjectSearchIndex, "autocomplete", l));
+console.log(JSON.stringify(projectSearchPaths, undefined, 2));
+const projectSearchPathsArray = langs.map((l) => extractSearchPaths(ProjectSearchIndex, l));
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {
     const allFrameworks = new Set();

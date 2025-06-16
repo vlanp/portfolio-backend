@@ -15,7 +15,7 @@ import { IAllProjectsFilters } from "./IProjectsFilters.js";
 import { IProgrammingLanguageOut } from "./IProgrammingLanguage.js";
 import {
   extractSearchPaths,
-  IPathsObject,
+  IExtractSearchPaths,
   ITypedSearchIndex,
 } from "../utils/mongooseSearchPaths.js";
 import { ILang, langs } from "./ILocalized.js";
@@ -78,6 +78,8 @@ const ProjectSchema = new mongoose.Schema<IProjectIn, IProjectModel>(
 const ProjectSearchIndex = {
   name: "ProjectsSearch",
   definition: {
+    analyzer: "lucene.standard",
+    searchAnalyzer: "lucene.standard",
     mappings: {
       dynamic: false,
       fields: {
@@ -90,9 +92,11 @@ const ProjectSearchIndex = {
               fields: {
                 en: {
                   type: "autocomplete",
+                  analyzer: "lucene.english",
                 },
                 fr: {
                   type: "autocomplete",
+                  analyzer: "lucene.french",
                 },
               },
               type: "document",
@@ -112,26 +116,35 @@ const ProjectSearchIndex = {
     },
   },
   type: "search",
-} as const satisfies ITypedSearchIndex;
+} as const satisfies ITypedSearchIndex<IDbProject>;
 
 ProjectSchema.searchIndex(ProjectSearchIndex);
 
 const projectSearchPaths = langs.reduce(
   (acc, l) => {
-    acc[l] = extractSearchPaths(ProjectSearchIndex, "autocomplete", l);
+    acc[l] = extractSearchPaths<
+      IDbProject,
+      ITypedSearchIndex<IDbProject>,
+      ILang
+    >(ProjectSearchIndex, l);
     return acc;
   },
   {} as {
-    [T in ILang]: IPathsObject<
-      (typeof ProjectSearchIndex)["definition"]["mappings"]["fields"],
-      "autocomplete",
-      T
+    [T in ILang]: IExtractSearchPaths<
+      IDbProject,
+      ITypedSearchIndex<IDbProject>,
+      ILang
     >;
   }
 );
 
+console.log(JSON.stringify(projectSearchPaths, undefined, 2));
+
 const projectSearchPathsArray = langs.map((l) =>
-  extractSearchPaths(ProjectSearchIndex, "autocomplete", l)
+  extractSearchPaths<IDbProject, ITypedSearchIndex<IDbProject>, ILang>(
+    ProjectSearchIndex,
+    l
+  )
 );
 
 type IProjectSearchPath =
