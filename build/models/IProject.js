@@ -86,7 +86,6 @@ const projectSearchPaths = langs.reduce((acc, l) => {
     acc[l] = extractSearchPaths(ProjectSearchIndex, l);
     return acc;
 }, {});
-console.log(JSON.stringify(projectSearchPaths, undefined, 2));
 const projectSearchPathsArray = langs.map((l) => extractSearchPaths(ProjectSearchIndex, l));
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {

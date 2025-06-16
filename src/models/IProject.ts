@@ -138,8 +138,6 @@ const projectSearchPaths = langs.reduce(
   }
 );
 
-console.log(JSON.stringify(projectSearchPaths, undefined, 2));
-
 const projectSearchPathsArray = langs.map((l) =>
   extractSearchPaths<IDbProject, ITypedSearchIndex<IDbProject>, ILang>(
     ProjectSearchIndex,

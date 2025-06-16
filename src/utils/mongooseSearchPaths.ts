@@ -137,7 +137,6 @@ function extractSearchPaths<
 
         if (field && typeof field === "object" && "type" in field) {
           if (field.type === "document" || field.type === "object") {
-            // Handle nested fields
             if ("fields" in field && field.fields) {
               const fieldKeys = Object.keys(field.fields);
               const isLocalized = fieldKeys.every((k) =>

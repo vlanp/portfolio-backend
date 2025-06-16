@@ -433,4 +433,7 @@ router.get("/projects/filters", async (req, res) => {
     };
     res.responsesFunc.sendOkResponse(filters);
 });
+router.get("/projects/searchPaths", async (req, res) => {
+    res.responsesFunc.sendOkResponse(projectSearchPaths);
+});
 export default router;

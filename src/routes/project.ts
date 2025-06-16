@@ -49,7 +49,11 @@ import {
   isDocumentWithHighlights,
   searchDbWithIndex,
 } from "../utils/mongooseSearch.js";
-import { ZELangs } from "../models/ILocalized.js";
+import { ILang, ZELangs } from "../models/ILocalized.js";
+import {
+  IExtractSearchPaths,
+  ITypedSearchIndex,
+} from "../utils/mongooseSearchPaths.js";
 
 const router = express.Router();
 
@@ -715,6 +719,22 @@ router.get(
       platforms: getAllPlatformsFromProjects(projectsOut),
     };
     res.responsesFunc.sendOkResponse(filters);
+  }
+);
+
+router.get(
+  "/projects/searchPaths",
+  async (
+    req: Request,
+    res: IOkResponse<{
+      [T in ILang]: IExtractSearchPaths<
+        IDbProject,
+        ITypedSearchIndex<IDbProject>,
+        ILang
+      >;
+    }>
+  ) => {
+    res.responsesFunc.sendOkResponse(projectSearchPaths);
   }
 );
 
