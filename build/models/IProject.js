@@ -38,6 +38,7 @@ const ProjectSchema = new mongoose.Schema({
 }, {
     timestamps: true,
     _id: true,
+    autoSearchIndex: true,
 });
 const ProjectSearchIndex = {
     name: "ProjectsSearch",
@@ -87,6 +88,7 @@ const projectSearchPaths = langs.reduce((acc, l) => {
     return acc;
 }, {});
 const projectSearchPathsArray = langs.map((l) => extractSearchPaths(ProjectSearchIndex, l));
+ProjectSchema.searchIndex(ProjectSearchIndex);
 const Project = mongoose.model("Project", ProjectSchema);
 function getAllFrameworksFromProjects(projects) {
     const allFrameworks = new Set();

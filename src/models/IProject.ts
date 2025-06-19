@@ -72,6 +72,7 @@ const ProjectSchema = new mongoose.Schema<IProjectIn, IProjectModel>(
   {
     timestamps: true,
     _id: true,
+    autoSearchIndex: true,
   }
 );
 
@@ -147,6 +148,8 @@ const projectSearchPathsArray = langs.map((l) =>
 
 type IProjectSearchPath =
   (typeof projectSearchPathsArray)[number][keyof (typeof projectSearchPathsArray)[number]];
+
+ProjectSchema.searchIndex(ProjectSearchIndex);
 
 const Project = mongoose.model<IProjectIn, IProjectModel>(
   "Project",
