@@ -2,16 +2,24 @@ import express, { NextFunction, Request } from "express";
 import mongoose from "mongoose";
 import checkedEnv from "./utils/checkEnv.js";
 import projectRouter from "./routes/project.js";
+import pictureRouter from "./routes/picture.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 import {
   addTypedResponses,
   IInternalServerErrorResponse,
 } from "./models/ITypedResponse.js";
+import { v2 as cloudinary } from "cloudinary";
 
 mongoose.connect(checkedEnv.MONGODB_URI);
 
 const app = express();
+
+cloudinary.config({
+  cloud_name: checkedEnv.CLOUDINARY_CLOUD_NAME,
+  api_key: checkedEnv.CLOUDINARY_API_KEY,
+  api_secret: checkedEnv.CLOUDINARY_API_SECRET,
+});
 
 app.use(addTypedResponses);
 
@@ -20,6 +28,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use(projectRouter);
+
+app.use(pictureRouter);
 
 // app.use(testRouter);
 
