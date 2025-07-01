@@ -7,6 +7,12 @@ declare module "express-serve-static-core" {
   }
 
   interface IResponsesFunctions<ResponseType = unknown> {
+    sendFileResponse(
+      content: string,
+      fileName: string,
+      fileExtension: string,
+      mimetype: string
+    ): void;
     sendOkResponse(data: ResponseType, message?: string): void;
     sendCreatedResponse(data: ResponseType, message?: string): void;
     sendAcceptedResponse(data: ResponseType, message?: string): void;

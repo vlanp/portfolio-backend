@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import checkedEnv from "./utils/checkEnv.js";
 import projectRouter from "./routes/project.js";
 import pictureRouter from "./routes/picture.js";
+import timelineRouter from "./routes/timeline.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 import {
@@ -30,6 +31,8 @@ app.use(express.json());
 app.use(projectRouter);
 
 app.use(pictureRouter);
+
+app.use(timelineRouter);
 
 // app.use(testRouter);
 

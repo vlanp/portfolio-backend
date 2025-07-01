@@ -17,11 +17,13 @@ import {
 } from "../models/IPicture.js";
 import { z } from "zod/v4";
 import { mainPictureFolder } from "../utils/config.js";
+import isAdmin from "../middlewares/isAdmin.js";
 
 const router = express.Router();
 
 router.post(
   "/picture/mainPicture",
+  isAdmin,
   fileUpload(),
   async (
     req: Request,

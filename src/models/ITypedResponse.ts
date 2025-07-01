@@ -43,6 +43,19 @@ interface ITypedResponse<
   json: Send<IResponseForStatus<StatusCode, ResponseType>, this>;
 }
 
+interface ITypedFileResponse<
+  StatusCode extends IStatusCode,
+  ResponseType = string
+> extends Response {
+  status(code: StatusCode): this;
+  send: Send<ResponseType, this>;
+}
+
+export interface IFileResponse
+  extends Omit<ITypedFileResponse<200>, "responsesFunc"> {
+  responsesFunc: Pick<IResponsesFunctions, "sendFileResponse">;
+}
+
 export interface IOkResponse<ResponseType>
   extends Omit<ITypedResponse<200, ResponseType>, "responsesFunc"> {
   responsesFunc: Pick<IResponsesFunctions<ResponseType>, "sendOkResponse">;
@@ -106,6 +119,7 @@ export const addTypedResponses = (
   expressResponse: Response,
   next: NextFunction
 ) => {
+  const fileResponse = expressResponse as IFileResponse;
   const okResponse = expressResponse as IOkResponse<unknown>;
   const createdResponse = expressResponse as ICreatedResponse<unknown>;
   const acceptedResponse = expressResponse as IAcceptedReponse<unknown>;
@@ -121,6 +135,19 @@ export const addTypedResponses = (
     expressResponse as IInternalServerErrorResponse;
 
   expressResponse.responsesFunc = {
+    sendFileResponse: (
+      content: string,
+      fileName: string,
+      fileExtension: string,
+      mimetype: string
+    ) => {
+      fileResponse.setHeader("Content-Type", mimetype);
+      fileResponse.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}.${fileExtension}"`
+      );
+      fileResponse.status(200).send(content);
+    },
     sendOkResponse: <ResponseType>(data: ResponseType, message?: string) => {
       okResponse.status(200).json({
         success: true,

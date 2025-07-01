@@ -11,7 +11,7 @@ type IDisplayName = z.infer<typeof ZDisplayName>;
 
 type IDbDisplayName = IDisplayName;
 
-const DisplayNameSchema = new mongoose.Schema<IDbDisplayName>(
+const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
   {
     name: {
       type: String,
