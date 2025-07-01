@@ -1,7 +1,7 @@
 import { Octokit } from "octokit";
 import type { Octokit as OctokitType } from "octokit";
 import checkedEnv from "./checkEnv.js";
-import matter, { GrayMatterFile } from "gray-matter";
+import matter from "gray-matter";
 import { LRUCache } from "lru-cache";
 import stableStringify from "json-stable-stringify";
 import remarkParse from "remark-parse";
@@ -19,6 +19,7 @@ import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
 import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
+import { IContent, IGrayMatterFile } from "../models/IMatter.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -41,16 +42,6 @@ const ZFrontMatterData = z.object({
 
 type IFrontMatterData = z.infer<typeof ZFrontMatterData>;
 
-type IGrayMatterFile<H> = GrayMatterFile<string> & {
-  data: H;
-};
-
-interface IContent {
-  htmlContent: string;
-  matterContent: IGrayMatterFile<IFrontMatterData>["data"];
-  tableOfContents: IDocToC[];
-}
-
 const cacheOptions = {
   max: 100,
   ttl: 1000 * 60 * 60,
@@ -62,7 +53,9 @@ const tagsCache = new LRUCache<string, IOctokitTagsResponse["data"]>(
 const treeCache = new LRUCache<string, IOctokitTreeResponse["data"]>(
   cacheOptions
 );
-const contentCache = new LRUCache<string, IContent>(cacheOptions);
+const contentCache = new LRUCache<string, IContent<IFrontMatterData>>(
+  cacheOptions
+);
 
 const octokit = new Octokit({
   auth: checkedEnv.GITHUB_READ_TOKEN,
@@ -120,7 +113,7 @@ const getContent = async (
   repo: IDbRepo,
   path: string,
   ref: string
-): Promise<IContent | null> => {
+): Promise<IContent<IFrontMatterData> | null> => {
   const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
@@ -183,7 +176,7 @@ const getContent = async (
       "/" +
       path
   );
-  const content: IContent = {
+  const content: IContent<IFrontMatterData> = {
     htmlContent: contentHtml,
     matterContent: matterContent.data,
     tableOfContents,
@@ -197,7 +190,6 @@ export type {
   IOctokitContentResponse,
   IOctokitTagsResponse,
   IOctokitTreeResponse,
-  IContent,
   IGrayMatterFile,
   IFrontMatterData,
 };

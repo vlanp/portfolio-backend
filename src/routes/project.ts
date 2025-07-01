@@ -17,7 +17,7 @@ import {
   getContent,
   getDocsTree,
   getTags,
-  IContent,
+  IFrontMatterData,
   IOctokitTagsResponse,
 } from "../utils/github.js";
 import { ITagContent } from "../models/ITagContent.js";
@@ -54,6 +54,7 @@ import {
   IExtractSearchPaths,
   ITypedSearchIndex,
 } from "../utils/mongooseSearchPaths.js";
+import { IContent } from "../models/IMatter.js";
 
 const router = express.Router();
 
@@ -515,7 +516,10 @@ router.get(
   "/repo/:repoid/fileContent/:filepath",
   async (
     req: Request,
-    res: IBadRequestResponse | INotFoundResponse | IOkResponse<IContent>
+    res:
+      | IBadRequestResponse
+      | INotFoundResponse
+      | IOkResponse<IContent<IFrontMatterData>>
   ) => {
     const { repoid, filepath } = req.params;
     const { ref } = req.query;
@@ -553,7 +557,9 @@ router.get(
       );
       return;
     }
-    (res as IOkResponse<IContent>).responsesFunc.sendOkResponse(fileContent);
+    (
+      res as IOkResponse<IContent<IFrontMatterData>>
+    ).responsesFunc.sendOkResponse(fileContent);
   }
 );
 

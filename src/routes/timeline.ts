@@ -18,6 +18,8 @@ import {
 } from "../models/ITypedResponse.js";
 import { z } from "zod/v4";
 import { isValidObjectId } from "mongoose";
+import { getContent } from "../utils/file.js";
+import { IContent } from "../models/IMatter.js";
 
 const router = express.Router();
 
@@ -290,6 +292,37 @@ router.get(
       "md",
       "text/markdown"
     );
+  }
+);
+
+router.get(
+  "/timeline/:id/fileContent",
+  async (
+    req: Request,
+    res: IBadRequestResponse | INotFoundResponse | IOkResponse<IContent>
+  ) => {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        "Invalid repo id"
+      );
+      return;
+    }
+    const dbTimelineData = await TimelineData.findById(id).lean();
+    if (!dbTimelineData) {
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No timelineData found with id : " + id
+      );
+      return;
+    }
+    const fileContent = await getContent(dbTimelineData.mdContent);
+    if (!fileContent) {
+      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
+        "No file content found."
+      );
+      return;
+    }
+    (res as IOkResponse<IContent>).responsesFunc.sendOkResponse(fileContent);
   }
 );
 
