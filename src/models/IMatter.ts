@@ -11,4 +11,8 @@ interface IContent<H = unknown> {
   tableOfContents: IDocToC[];
 }
 
-export type { IGrayMatterFile, IContent };
+interface IContentWithExtraData<ED> extends IContent {
+  extraData: ED;
+}
+
+export type { IGrayMatterFile, IContent, IContentWithExtraData };

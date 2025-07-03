@@ -3,6 +3,7 @@ import fileUpload from "express-fileupload";
 import isAdmin from "../middlewares/isAdmin.js";
 import {
   IDbTimelineData,
+  IDbTimelineDataNoMd,
   ITimelineData,
   ITimelineDatasNoMd,
   TimelineData,
@@ -19,7 +20,7 @@ import {
 import { z } from "zod/v4";
 import { isValidObjectId } from "mongoose";
 import { getContent } from "../utils/file.js";
-import { IContent } from "../models/IMatter.js";
+import { IContentWithExtraData } from "../models/IMatter.js";
 
 const router = express.Router();
 
@@ -299,7 +300,10 @@ router.get(
   "/timeline/:id/fileContent",
   async (
     req: Request,
-    res: IBadRequestResponse | INotFoundResponse | IOkResponse<IContent>
+    res:
+      | IBadRequestResponse
+      | INotFoundResponse
+      | IOkResponse<IContentWithExtraData<IDbTimelineDataNoMd>>
   ) => {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
@@ -322,7 +326,15 @@ router.get(
       );
       return;
     }
-    (res as IOkResponse<IContent>).responsesFunc.sendOkResponse(fileContent);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { mdContent, ...dbTimelineDataNoMd } = dbTimelineData;
+    const fileContentWithExtraData = {
+      ...fileContent,
+      extraData: dbTimelineDataNoMd,
+    };
+    (
+      res as IOkResponse<IContentWithExtraData<IDbTimelineDataNoMd>>
+    ).responsesFunc.sendOkResponse(fileContentWithExtraData);
   }
 );
 

@@ -91,6 +91,14 @@ const ZDbTimelineData = z.discriminatedUnion("type", [
 
 type IDbTimelineData = z.infer<typeof ZDbTimelineData>;
 
+const ZDbTimelineDataNoMd = z.discriminatedUnion("type", [
+  createZodDb(ZTimelineExperiencesData).omit({ mdContent: true }),
+  createZodDb(ZTimelineProjectsData).omit({ mdContent: true }),
+  createZodDb(ZTimelineStudiesData).omit({ mdContent: true }),
+]);
+
+type IDbTimelineDataNoMd = z.infer<typeof ZDbTimelineDataNoMd>;
+
 type IHydratedTimelineDataDocument = HydratedDocument<IDbTimelineData>;
 
 type ITimelineDataModel = Model<
@@ -229,6 +237,7 @@ export type {
   ITimelineStudiesData,
   IDbTimelineData,
   IPartialTimelineData,
+  IDbTimelineDataNoMd,
 };
 export {
   ZTimelineData,
@@ -240,4 +249,5 @@ export {
   ZDbTimelineData,
   TimelineData,
   ZPartialTimelineData,
+  ZDbTimelineDataNoMd,
 };
