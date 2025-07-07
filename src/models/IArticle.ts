@@ -80,6 +80,14 @@ const ZArticle = z.object({
 
 type IArticle = z.infer<typeof ZArticle>;
 
+const ZArticleNoMd = ZArticle.omit({ mdContents: true });
+
+type IArticleNoMd = z.infer<typeof ZArticleNoMd>;
+
+const ZPartialArticle = ZArticle.partial();
+
+type IPartialArticle = z.infer<typeof ZPartialArticle>;
+
 const ZDbArticle = z.object({
   ...ZArticle.shape,
   _id: z.instanceof(Types.ObjectId),
@@ -89,6 +97,10 @@ const ZDbArticle = z.object({
 });
 
 type IDbArticle = z.infer<typeof ZDbArticle>;
+
+const ZDbArticleNoMd = ZDbArticle.omit({ mdContents: true });
+
+type IDbArticleNoMd = z.infer<typeof ZDbArticleNoMd>;
 
 type IHydratedArticleDocument = HydratedDocument<IDbArticle>;
 
@@ -157,6 +169,9 @@ export {
   ZDbArticle,
   ArticleSchema,
   Article,
+  ZArticleNoMd,
+  ZPartialArticle,
+  ZDbArticleNoMd,
 };
 export type {
   IArticleCategory,
@@ -165,4 +180,7 @@ export type {
   IDbArticle,
   IHydratedArticleDocument,
   IArticleModel,
+  IArticleNoMd,
+  IPartialArticle,
+  IDbArticleNoMd,
 };

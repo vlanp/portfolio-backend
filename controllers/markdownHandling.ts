@@ -6,12 +6,16 @@ import {
   INotFoundResponse,
   IOkResponse,
 } from "../src/models/ITypedResponse";
-import { checkLocalizedFiles, ILang, ZELangs } from "../src/models/ILocalized";
+import {
+  checkLocalizedFiles,
+  ILang,
+  ZELangs,
+} from "../src/models/ILocalized.js";
 import fileUpload from "express-fileupload";
 import { z } from "zod/v4";
 import mongoose, { HydratedDocument, isValidObjectId } from "mongoose";
 import { IContentWithExtraData } from "../src/models/IMatter";
-import { getContent } from "../src/utils/file";
+import { getContent } from "../src/utils/file.js";
 
 const getUploadMarkdownController =
   <
@@ -273,17 +277,14 @@ const getUpdateMarkdownController =
     );
   };
 
-const getDatasNoMdContent =
+const getDatasNoMdContents =
   <
     DataType extends {
       mdContents: Record<ILang, string>;
     },
     DbDataType extends DataType
   >(
-    ZDataTypeNoMd: z.ZodType<
-      Omit<DataType, "mdContents">,
-      Omit<DataType, "mdContents">
-    >,
+    ZDbDataTypeNoMd: z.ZodType<Omit<DbDataType, "mdContents">>,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -298,7 +299,7 @@ const getDatasNoMdContent =
   async (req: Request, res: IOkResponse<Omit<DataType, "mdContents">[]>) => {
     const unsafeDatas = await MongooseModel.find({}, { mdContents: 0 }).lean();
     const datas = unsafeDatas.map((unsafeData) => {
-      const dataParseResult = ZDataTypeNoMd.safeParse(unsafeData);
+      const dataParseResult = ZDbDataTypeNoMd.safeParse(unsafeData);
       if (!dataParseResult.success) {
         throw new Error(z.prettifyError(dataParseResult.error));
       }
@@ -452,7 +453,7 @@ const getMdFileContentController =
 export {
   getUploadMarkdownController,
   getUpdateMarkdownController,
-  getDatasNoMdContent,
+  getDatasNoMdContents,
   getDownloadMdController,
   getMdFileContentController,
 };

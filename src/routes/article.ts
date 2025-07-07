@@ -1,14 +1,19 @@
 import express from "express";
 import isAdmin from "../middlewares/isAdmin.js";
 import fileUpload from "express-fileupload";
-import { Article, ZArticle } from "../models/IArticle.js";
 import {
-  getDatasNoMdContent,
+  Article,
+  ZArticle,
+  ZDbArticleNoMd,
+  ZPartialArticle,
+} from "../models/IArticle.js";
+import {
+  getDatasNoMdContents,
   getDownloadMdController,
   getMdFileContentController,
   getUpdateMarkdownController,
   getUploadMarkdownController,
-} from "../../controllers/markdownHandling";
+} from "../../controllers/markdownHandling.js";
 
 const router = express.Router();
 
@@ -23,10 +28,13 @@ router.put(
   "/article/update/:id",
   isAdmin,
   fileUpload(),
-  getUpdateMarkdownController(ZArticle.partial(), Article)
+  getUpdateMarkdownController(ZPartialArticle, Article)
 );
 
-router.get("/article/noMdContents", getDatasNoMdContent(ZArticle, Article));
+router.get(
+  "/article/noMdContents",
+  getDatasNoMdContents(ZDbArticleNoMd, Article)
+);
 
 router.get("/article/downloadMd/:id", getDownloadMdController(Article));
 
