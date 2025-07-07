@@ -378,7 +378,7 @@ const getMdFileContentController =
     },
     DbDataType extends DataType
   >(
-    ZDataType: z.ZodType<DataType, DataType>,
+    ZDbDataType: z.ZodType<DbDataType>,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -424,7 +424,7 @@ const getMdFileContentController =
       );
       return;
     }
-    const dbDataParseResult = ZDataType.safeParse(unsafeDbData);
+    const dbDataParseResult = ZDbDataType.safeParse(unsafeDbData);
 
     if (!dbDataParseResult.success) {
       throw new Error(z.prettifyError(dbDataParseResult.error));

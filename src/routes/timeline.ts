@@ -4,6 +4,7 @@ import isAdmin from "../middlewares/isAdmin.js";
 import {
   ITimelineDatasNoMd,
   TimelineData,
+  ZDbTimelineData,
   ZPartialTimelineData,
   ZTimelineData,
 } from "../models/ITimelineData.js";
@@ -62,7 +63,7 @@ router.get("/timeline/downloadMd/:id", getDownloadMdController(TimelineData));
 
 router.get(
   "/timeline/:id/fileContent",
-  getMdFileContentController(ZTimelineData, TimelineData)
+  getMdFileContentController(ZDbTimelineData, TimelineData)
 );
 
 export default router;
