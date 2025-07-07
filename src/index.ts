@@ -4,6 +4,7 @@ import checkedEnv from "./utils/checkEnv.js";
 import projectRouter from "./routes/project.js";
 import pictureRouter from "./routes/picture.js";
 import timelineRouter from "./routes/timeline.js";
+import articleRouter from "./routes/article.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 import {
@@ -33,6 +34,8 @@ app.use(projectRouter);
 app.use(pictureRouter);
 
 app.use(timelineRouter);
+
+app.use(articleRouter);
 
 // app.use(testRouter);
 

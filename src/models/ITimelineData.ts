@@ -6,33 +6,33 @@ const ZETimelineElements = z.enum(["studies", "experiences", "projects"]);
 
 type ITimelineElement = z.infer<typeof ZETimelineElements>;
 
-const ZTimelineStudiesData = z.strictObject({
+const ZTimelineStudiesData = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
   description: z.record(ZELangs, z.string()),
   establishement: z.string(),
   place: z.string().optional(),
-  mdContent: z.string(),
+  mdContents: z.record(ZELangs, z.string()),
   type: z.literal(ZETimelineElements.enum.studies),
 });
 
 type ITimelineStudiesData = z.infer<typeof ZTimelineStudiesData>;
 
-const ZTimelineExperiencesData = z.strictObject({
+const ZTimelineExperiencesData = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
   description: z.record(ZELangs, z.string()),
   enterprise: z.string().optional(),
   place: z.string().optional(),
-  mdContent: z.string(),
+  mdContents: z.record(ZELangs, z.string()),
   type: z.literal(ZETimelineElements.enum.experiences),
 });
 
 type ITimelineExperiencesData = z.infer<typeof ZTimelineExperiencesData>;
 
-const ZTimelineProjectsData = z.strictObject({
+const ZTimelineProjectsData = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
@@ -52,7 +52,7 @@ const ZTimelineProjectsData = z.strictObject({
       "Terminé",
     ]),
   }),
-  mdContent: z.string(),
+  mdContents: z.record(ZELangs, z.string()),
   type: z.literal(ZETimelineElements.enum.projects),
 });
 
@@ -75,7 +75,7 @@ const ZPartialTimelineData = z.discriminatedUnion("type", [
 type IPartialTimelineData = z.infer<typeof ZPartialTimelineData>;
 
 const createZodDb = <T extends z.ZodRawShape>(baseSchema: z.ZodObject<T>) =>
-  z.strictObject({
+  z.object({
     ...baseSchema.shape,
     _id: z.instanceof(Types.ObjectId),
     createdAt: z.instanceof(Date),
@@ -92,9 +92,9 @@ const ZDbTimelineData = z.discriminatedUnion("type", [
 type IDbTimelineData = z.infer<typeof ZDbTimelineData>;
 
 const ZDbTimelineDataNoMd = z.discriminatedUnion("type", [
-  createZodDb(ZTimelineExperiencesData).omit({ mdContent: true }),
-  createZodDb(ZTimelineProjectsData).omit({ mdContent: true }),
-  createZodDb(ZTimelineStudiesData).omit({ mdContent: true }),
+  createZodDb(ZTimelineExperiencesData).omit({ mdContents: true }),
+  createZodDb(ZTimelineProjectsData).omit({ mdContents: true }),
+  createZodDb(ZTimelineStudiesData).omit({ mdContents: true }),
 ]);
 
 type IDbTimelineDataNoMd = z.infer<typeof ZDbTimelineDataNoMd>;
@@ -143,9 +143,14 @@ const TimelineDataSchema = new mongoose.Schema<
         message: `Description must contain following keys : ${ZELangs.options}`,
       },
     },
-    mdContent: {
-      type: String,
+    mdContents: {
+      type: Map,
+      of: String,
       required: true,
+      validate: {
+        validator: localizationValidator,
+        message: `mdContent must contain following keys : ${ZELangs.options}`,
+      },
     },
     type: {
       type: String,
@@ -216,13 +221,13 @@ const TimelineData = mongoose.model<ITimelineData, ITimelineDataModel>(
 
 const ZTimelineDatasNoMd = z.strictObject({
   [ZETimelineElements.enum.experiences]: z.array(
-    createZodDb(ZTimelineExperiencesData).omit({ mdContent: true })
+    createZodDb(ZTimelineExperiencesData).omit({ mdContents: true })
   ),
   [ZETimelineElements.enum.projects]: z.array(
-    createZodDb(ZTimelineProjectsData).omit({ mdContent: true })
+    createZodDb(ZTimelineProjectsData).omit({ mdContents: true })
   ),
   [ZETimelineElements.enum.studies]: z.array(
-    createZodDb(ZTimelineStudiesData).omit({ mdContent: true })
+    createZodDb(ZTimelineStudiesData).omit({ mdContents: true })
   ),
 });
 
