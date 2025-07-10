@@ -54,7 +54,7 @@ router.get(
 );
 
 router.get(
-  "/articlesCategories",
+  "/article/articlesCategories",
   async (_req: Request, res: IOkResponse<IArticlesCategories>) => {
     const articlesCategories = await getArticlesCategories();
     res.responsesFunc.sendOkResponse(articlesCategories);
