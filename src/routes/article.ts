@@ -3,6 +3,9 @@ import isAdmin from "../middlewares/isAdmin.js";
 import fileUpload from "express-fileupload";
 import {
   Article,
+  IArticle,
+  IDbArticle,
+  IPartialArticle,
   ZArticle,
   ZDbArticleNoMd,
   ZPartialArticle,
@@ -21,14 +24,18 @@ router.post(
   "/article/upload",
   isAdmin,
   fileUpload(),
-  getUploadMarkdownController(ZArticle, Article)
+  getUploadMarkdownController<IArticle, IDbArticle>(ZArticle, Article, "imgUrl")
 );
 
 router.put(
   "/article/update/:id",
   isAdmin,
   fileUpload(),
-  getUpdateMarkdownController(ZPartialArticle, Article)
+  getUpdateMarkdownController<IPartialArticle, IDbArticle>(
+    ZPartialArticle,
+    Article,
+    "imgUrl"
+  )
 );
 
 router.get(

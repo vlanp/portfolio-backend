@@ -16,6 +16,9 @@ import { z } from "zod/v4";
 import mongoose, { HydratedDocument, isValidObjectId } from "mongoose";
 import { IContentWithExtraData } from "../src/models/IMatter";
 import { getContent } from "../src/utils/file.js";
+import { parsePicture } from "../src/utils/pictures.js";
+import { v2 as cloudinary } from "cloudinary";
+import { articlesFolder } from "../src/utils/config.js";
 
 const getUploadMarkdownController =
   <
@@ -34,13 +37,15 @@ const getUploadMarkdownController =
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
       HydratedDocument<DbDataType>
-    >
+    >,
+    imgKey?: keyof DataType & string
   ) =>
   async (
     req: Request,
     res: IBadRequestResponse | ICreatedResponse<DataType>
   ) => {
-    const baseFileKey = "markdown";
+    const baseMarkdownFilesKey = "markdown";
+    const imageFileKey = "image";
     const requestFiles = req.files;
     if (!requestFiles) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -54,13 +59,13 @@ const getUploadMarkdownController =
       fileUpload.UploadedFile | fileUpload.UploadedFile[]
     ][] = ZELangs.options.map((lang) => [
       lang,
-      requestFiles[`${baseFileKey}${lang}`],
+      requestFiles[`${baseMarkdownFilesKey}${lang}`],
     ]);
 
     if (
       !checkLocalizedFiles(
         localizedMarkdowns,
-        baseFileKey,
+        baseMarkdownFilesKey,
         res as IBadRequestResponse
       )
     ) {
@@ -73,6 +78,34 @@ const getUploadMarkdownController =
         localizedMarkdown[1].data.toString("utf-8"),
       ])
     ) as Record<ILang, string>;
+
+    let secureUrl: string | undefined = undefined;
+    if (imgKey) {
+      const picture = requestFiles[imageFileKey];
+
+      if (!picture) {
+        (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+          `No file found in the request body with key ${imageFileKey}.`
+        );
+        return;
+      }
+
+      if (Array.isArray(picture)) {
+        (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+          `Only one file expected in the request body for key ${imageFileKey}, but multiple were found.`
+        );
+        return;
+      }
+
+      const pictureBase64 = parsePicture(picture);
+
+      const uploadPicture = await cloudinary.uploader.upload(pictureBase64, {
+        folder: articlesFolder,
+        timeout: 300000,
+      });
+
+      secureUrl = uploadPicture.secure_url;
+    }
 
     if (!req.body) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -118,6 +151,7 @@ const getUploadMarkdownController =
     const dataParseResult = ZDataType.safeParse({
       ...jsonDetails,
       mdContents: mdContents,
+      ...(imgKey ? { [imgKey]: secureUrl } : {}),
     });
 
     if (!dataParseResult.success) {
@@ -134,7 +168,7 @@ const getUploadMarkdownController =
     const addedDbArticle = await newDbData.save();
 
     (res as ICreatedResponse<DbDataType>).responsesFunc.sendCreatedResponse(
-      addedDbArticle
+      addedDbArticle.toObject()
     );
   };
 
@@ -155,44 +189,73 @@ const getUpdateMarkdownController =
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
       HydratedDocument<DbDataType>
-    >
+    >,
+    imgKey?: keyof PartialDataType & string
   ) =>
   async (
     req: Request,
     res: IBadRequestResponse | ICreatedResponse<DbDataType> | INotFoundResponse
   ) => {
-    const baseFileKey = "markdown";
+    const baseMarkdownFilesKey = "markdown";
+    const imageFileKey = "image";
     const requestFiles = req.files;
     let mdContents: Record<ILang, string> | undefined = undefined;
+    let secureUrl: string | undefined = undefined;
     if (requestFiles) {
       const localizedMarkdowns: [
         ILang,
         fileUpload.UploadedFile | fileUpload.UploadedFile[]
       ][] = ZELangs.options.map((lang) => [
         lang,
-        requestFiles[`${baseFileKey}${lang}`],
+        requestFiles[`${baseMarkdownFilesKey}${lang}`],
       ]);
 
       const filteredLocalizedMarkdowns = localizedMarkdowns.filter(
-        ([localizedMarkdown]) => localizedMarkdown !== undefined
+        ([, value]) => value !== undefined
       );
 
-      if (
-        !checkLocalizedFiles(
-          filteredLocalizedMarkdowns,
-          baseFileKey,
-          res as IBadRequestResponse
-        )
-      ) {
-        return;
+      if (filteredLocalizedMarkdowns.length > 0) {
+        if (
+          !checkLocalizedFiles(
+            filteredLocalizedMarkdowns,
+            baseMarkdownFilesKey,
+            res as IBadRequestResponse
+          )
+        ) {
+          return;
+        }
+
+        mdContents = Object.fromEntries(
+          filteredLocalizedMarkdowns.map((localizedMarkdown) => [
+            localizedMarkdown[0],
+            localizedMarkdown[1].data.toString("utf-8"),
+          ])
+        ) as Record<ILang, string>;
       }
 
-      mdContents = Object.fromEntries(
-        filteredLocalizedMarkdowns.map((localizedMarkdown) => [
-          localizedMarkdown[0],
-          localizedMarkdown[1].data.toString("utf-8"),
-        ])
-      ) as Record<ILang, string>;
+      if (imgKey) {
+        const picture = requestFiles[imageFileKey];
+
+        if (picture) {
+          if (Array.isArray(picture)) {
+            (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+              `Only one file expected in the request body for key ${imageFileKey}, but multiple were found.`
+            );
+            return;
+          }
+          const pictureBase64 = parsePicture(picture);
+
+          const uploadPicture = await cloudinary.uploader.upload(
+            pictureBase64,
+            {
+              folder: articlesFolder,
+              timeout: 300000,
+            }
+          );
+
+          secureUrl = uploadPicture.secure_url;
+        }
+      }
     }
 
     const details = req.body && req.body.details;
@@ -247,7 +310,7 @@ const getUpdateMarkdownController =
       return;
     }
 
-    const notParsedData = mdContents
+    let notParsedData = mdContents
       ? {
           ...jsonDetails,
           mdContents: {
@@ -256,6 +319,13 @@ const getUpdateMarkdownController =
           },
         }
       : jsonDetails;
+
+    notParsedData = imgKey
+      ? {
+          ...notParsedData,
+          [imgKey]: secureUrl ? secureUrl : dbData[imgKey],
+        }
+      : notParsedData;
 
     const dataParseResult = ZPartialDataType.safeParse(notParsedData);
 

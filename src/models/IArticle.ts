@@ -74,6 +74,10 @@ const getOrderedParentCategories = (articleCategory: IArticleCategory) => {
 const ZArticle = z.object({
   title: z.record(ZELangs, z.string()),
   description: z.record(ZELangs, z.string()),
+  imgUrl: z.url({
+    protocol: /^https?$/,
+    hostname: z.regexes.hostname,
+  }),
   mdContents: z.record(ZELangs, z.string()),
   category: ZEArticlesCategories,
 });
@@ -125,6 +129,10 @@ const ArticleSchema = new mongoose.Schema<IArticle, IArticleModel>(
         validator: localizationValidator,
         message: `Title must contain following keys : ${ZELangs.options}`,
       },
+    },
+    imgUrl: {
+      type: String,
+      required: true,
     },
     description: {
       type: Map,
