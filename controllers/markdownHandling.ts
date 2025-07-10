@@ -19,6 +19,10 @@ import { getContent } from "../src/utils/file.js";
 import { parsePicture } from "../src/utils/pictures.js";
 import { v2 as cloudinary } from "cloudinary";
 import { articlesFolder } from "../src/utils/config.js";
+import {
+  articlesCategoriesMapping,
+  getAllChildsCategories,
+} from "../src/models/IArticle.js";
 
 const getUploadMarkdownController =
   <
@@ -347,7 +351,7 @@ const getUpdateMarkdownController =
     );
   };
 
-const getDatasNoMdContents =
+const getDatasNoMdContentsController =
   <
     DataType extends {
       mdContents: Record<ILang, string>;
@@ -366,8 +370,60 @@ const getDatasNoMdContents =
       HydratedDocument<DbDataType>
     >
   ) =>
-  async (req: Request, res: IOkResponse<Omit<DataType, "mdContents">[]>) => {
-    const unsafeDatas = await MongooseModel.find({}, { mdContents: 0 }).lean();
+  async (
+    req: Request,
+    res: IBadRequestResponse | IOkResponse<Omit<DataType, "mdContents">[]>
+  ) => {
+    const filterKey = "categoryId";
+    const categoryId = req.query[filterKey];
+
+    const categoriesIds =
+      typeof categoryId === "string"
+        ? [categoryId]
+        : Array.isArray(categoryId)
+        ? categoryId
+        : undefined;
+
+    if (categoriesIds) {
+      for (const categoryId of categoriesIds) {
+        if (
+          !Object.values(articlesCategoriesMapping)
+            .map((v) => v.id)
+            .includes(
+              categoryId as (typeof articlesCategoriesMapping)[keyof typeof articlesCategoriesMapping]["id"]
+            )
+        ) {
+          (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+            `Invalid categoryId: ${categoryId}.`
+          );
+          return;
+        }
+      }
+    }
+    const categoriesNames =
+      categoriesIds &&
+      categoriesIds
+        .map(
+          (id) =>
+            Object.values(articlesCategoriesMapping).find((it) => it.id === id)
+              ?.name
+        )
+        .filter((it) => it !== undefined);
+
+    const allChildsCategories = categoriesNames?.flatMap((categoryName) =>
+      getAllChildsCategories(categoryName)
+    );
+
+    const unsafeDatas = await MongooseModel.find(
+      allChildsCategories
+        ? {
+            category: {
+              $in: allChildsCategories,
+            },
+          }
+        : {},
+      { mdContents: 0 }
+    ).lean();
     const datas = unsafeDatas.map((unsafeData) => {
       const dataParseResult = ZDbDataTypeNoMd.safeParse(unsafeData);
       if (!dataParseResult.success) {
@@ -523,7 +579,7 @@ const getMdFileContentController =
 export {
   getUploadMarkdownController,
   getUpdateMarkdownController,
-  getDatasNoMdContents,
+  getDatasNoMdContentsController,
   getDownloadMdController,
   getMdFileContentController,
 };

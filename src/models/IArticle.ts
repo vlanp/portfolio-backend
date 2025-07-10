@@ -78,6 +78,35 @@ const getOrderedParentCategories = (articleCategory: IArticleCategory) => {
   return orderedParentCategories;
 };
 
+const getAllChildsCategories = (
+  articleCategory: IArticleCategory
+): IArticleCategory[] => {
+  const getChildsCategories = (articleCategory: IArticleCategory) => {
+    const mappedArticleCategory =
+      articlesCategoriesMapping[
+        articleCategory.toUpperCase() as Uppercase<IArticleCategory>
+      ];
+    const name = mappedArticleCategory.name;
+    let childs = Object.values(articlesCategoriesMapping)
+      .filter(
+        (mappedArticleCategory) =>
+          "parentCategory" in mappedArticleCategory &&
+          mappedArticleCategory.parentCategory ===
+            (name.toUpperCase() as Uppercase<IArticleCategory>)
+      )
+      .map((mappedArticleCategory) => mappedArticleCategory.name);
+
+    childs = childs.flatMap((child) => {
+      const childs = getChildsCategories(child);
+      return childs.length > 0 ? childs : [child];
+    });
+
+    return childs;
+  };
+  const childs = getChildsCategories(articleCategory);
+  return childs.length > 0 ? childs : [articleCategory];
+};
+
 const ZArticle = z.object({
   title: z.record(ZELangs, z.string()),
   description: z.record(ZELangs, z.string()),
@@ -278,6 +307,7 @@ export {
   ZDbArticleNoMd,
   ZArticlesCategories,
   getArticlesCategories,
+  getAllChildsCategories,
 };
 export type {
   IArticleCategory,

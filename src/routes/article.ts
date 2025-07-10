@@ -13,7 +13,7 @@ import {
   ZPartialArticle,
 } from "../models/IArticle.js";
 import {
-  getDatasNoMdContents,
+  getDatasNoMdContentsController,
   getDownloadMdController,
   getMdFileContentController,
   getUpdateMarkdownController,
@@ -43,7 +43,7 @@ router.put(
 
 router.get(
   "/article/noMdContents",
-  getDatasNoMdContents(ZDbArticleNoMd, Article)
+  getDatasNoMdContentsController(ZDbArticleNoMd, Article)
 );
 
 router.get("/article/downloadMd/:id", getDownloadMdController(Article));
