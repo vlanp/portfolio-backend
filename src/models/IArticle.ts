@@ -18,6 +18,7 @@ type IArticlesCategoriesMapping = {
   [k in Uppercase<IArticleCategory>]: {
     name: IOriginalCase<IArticleCategory, k>;
     parentCategory?: keyof IArticlesCategoriesMapping;
+    id: string;
   };
 };
 
@@ -25,23 +26,29 @@ const articlesCategoriesMapping = {
   TYPESCRIPT: {
     name: "TypeScript",
     parentCategory: "JAVASCRIPT",
+    id: "e0e23929dc924cabd449ac035d402f84",
   },
   JAVASCRIPT: {
     name: "JavaScript",
+    id: "17081c17ac5f94a3abbd8068b74f7cd2",
   },
   KOTLIN: {
     name: "Kotlin",
+    id: "0959da453e937229ff208a9673a5fe5a",
   },
   MONGOOSE: {
     name: "Mongoose",
     parentCategory: "JAVASCRIPT",
+    id: "adae87b41557b1037baa73dc5fe9768e",
   },
   "NODE.JS": {
     name: "Node.js",
     parentCategory: "JAVASCRIPT",
+    id: "d695216722adb2e27a5756c0f1b6a958",
   },
   PYTHON: {
     name: "Python",
+    id: "d695216722adb2e27a5756c0f1b6a958",
   },
 } as const satisfies IArticlesCategoriesMapping;
 
@@ -189,7 +196,9 @@ const getArticlesCategories = async (): Promise<IArticlesCategories> => {
   Object.values(ZEArticlesCategories.options).forEach((category) => {
     categories[category] = {
       numberOfElements: 0,
-      id: new Types.ObjectId().toString(),
+      id: articlesCategoriesMapping[
+        category.toUpperCase() as Uppercase<IArticleCategory>
+      ].id,
       childCategories: {},
     };
   });
