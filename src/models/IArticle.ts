@@ -169,6 +169,93 @@ const Article = mongoose.model<IArticle, IArticleModel>(
   ArticleSchema
 );
 
+const ZArticlesCategories = z.partialRecord(
+  ZEArticlesCategories,
+  z.object({
+    numberOfElements: z.number(),
+    id: z.string(),
+    get childCategories() {
+      return ZArticlesCategories;
+    },
+  })
+);
+
+type IArticlesCategories = z.infer<typeof ZArticlesCategories>;
+
+const getArticlesCategories = async (): Promise<IArticlesCategories> => {
+  const articles = await Article.find().lean();
+  const categories: IArticlesCategories = {};
+
+  Object.values(ZEArticlesCategories.options).forEach((category) => {
+    categories[category] = {
+      numberOfElements: 0,
+      id: new Types.ObjectId().toString(),
+      childCategories: {},
+    };
+  });
+
+  Object.entries(articlesCategoriesMapping).forEach(([, config]) => {
+    const categoryName = config.name;
+
+    if ("parentCategory" in config) {
+      const parentCategoryName =
+        articlesCategoriesMapping[config.parentCategory].name;
+
+      if (categories[parentCategoryName] && categories[categoryName]) {
+        categories[parentCategoryName].childCategories[categoryName] =
+          categories[categoryName];
+      }
+    }
+  });
+
+  articles.forEach((article) => {
+    const category = article.category;
+
+    if (categories[category]) {
+      categories[category].numberOfElements += 1;
+    }
+
+    const parentCategories = getOrderedParentCategories(category);
+    parentCategories.forEach((parentCategoryKey) => {
+      const parentCategoryName =
+        articlesCategoriesMapping[parentCategoryKey].name;
+      if (categories[parentCategoryName]) {
+        categories[parentCategoryName].numberOfElements += 1;
+      }
+    });
+  });
+
+  const cleanCategories = (
+    cats: IArticlesCategories,
+    root: boolean = true
+  ): IArticlesCategories => {
+    const cleaned: IArticlesCategories = {};
+
+    Object.entries(cats).forEach(([key, value]) => {
+      if (
+        value.numberOfElements > 0 &&
+        (root
+          ? !(
+              "parentCategory" in
+              articlesCategoriesMapping[
+                key.toUpperCase() as Uppercase<IArticleCategory>
+              ]
+            )
+          : true)
+      ) {
+        cleaned[key as IArticleCategory] = {
+          ...value,
+          childCategories: cleanCategories(value.childCategories, false),
+        };
+      }
+    });
+
+    return cleaned;
+  };
+
+  return cleanCategories(categories);
+};
+
 export {
   ZEArticlesCategories,
   getOrderedParentCategories,
@@ -180,6 +267,8 @@ export {
   ZArticleNoMd,
   ZPartialArticle,
   ZDbArticleNoMd,
+  ZArticlesCategories,
+  getArticlesCategories,
 };
 export type {
   IArticleCategory,
@@ -191,4 +280,5 @@ export type {
   IArticleNoMd,
   IPartialArticle,
   IDbArticleNoMd,
+  IArticlesCategories,
 };
