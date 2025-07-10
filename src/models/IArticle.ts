@@ -114,6 +114,8 @@ const ZArticle = z.object({
     protocol: /^https?$/,
     hostname: z.regexes.hostname,
   }),
+  imgWidth: z.number().int().positive(),
+  imgHeight: z.number().int().positive(),
   mdContents: z.record(ZELangs, z.string()),
   category: ZEArticlesCategories,
 });
@@ -169,6 +171,16 @@ const ArticleSchema = new mongoose.Schema<IArticle, IArticleModel>(
     imgUrl: {
       type: String,
       required: true,
+    },
+    imgWidth: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    imgHeight: {
+      type: Number,
+      required: true,
+      min: 1,
     },
     description: {
       type: Map,

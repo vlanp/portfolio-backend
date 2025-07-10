@@ -42,7 +42,11 @@ const getUploadMarkdownController =
       {},
       HydratedDocument<DbDataType>
     >,
-    imgKey?: keyof DataType & string
+    imgOptions?: {
+      imgKey: keyof DataType & string;
+      imgWidthKey: keyof DataType & string;
+      imgHeightKey: keyof DataType & string;
+    }
   ) =>
   async (
     req: Request,
@@ -84,7 +88,9 @@ const getUploadMarkdownController =
     ) as Record<ILang, string>;
 
     let secureUrl: string | undefined = undefined;
-    if (imgKey) {
+    let width: number | undefined = undefined;
+    let height: number | undefined = undefined;
+    if (imgOptions) {
       const picture = requestFiles[imageFileKey];
 
       if (!picture) {
@@ -109,6 +115,8 @@ const getUploadMarkdownController =
       });
 
       secureUrl = uploadPicture.secure_url;
+      width = uploadPicture.width;
+      height = uploadPicture.height;
     }
 
     if (!req.body) {
@@ -155,7 +163,9 @@ const getUploadMarkdownController =
     const dataParseResult = ZDataType.safeParse({
       ...jsonDetails,
       mdContents: mdContents,
-      ...(imgKey ? { [imgKey]: secureUrl } : {}),
+      ...(imgOptions ? { [imgOptions.imgKey]: secureUrl } : {}),
+      ...(imgOptions ? { [imgOptions.imgWidthKey]: width } : {}),
+      ...(imgOptions ? { [imgOptions.imgHeightKey]: height } : {}),
     });
 
     if (!dataParseResult.success) {
@@ -194,7 +204,11 @@ const getUpdateMarkdownController =
       {},
       HydratedDocument<DbDataType>
     >,
-    imgKey?: keyof PartialDataType & string
+    imgOptions?: {
+      imgKey: keyof PartialDataType & string;
+      imgWidthKey: keyof PartialDataType & string;
+      imgHeightKey: keyof PartialDataType & string;
+    }
   ) =>
   async (
     req: Request,
@@ -205,6 +219,8 @@ const getUpdateMarkdownController =
     const requestFiles = req.files;
     let mdContents: Record<ILang, string> | undefined = undefined;
     let secureUrl: string | undefined = undefined;
+    let width: number | undefined = undefined;
+    let height: number | undefined = undefined;
     if (requestFiles) {
       const localizedMarkdowns: [
         ILang,
@@ -237,7 +253,7 @@ const getUpdateMarkdownController =
         ) as Record<ILang, string>;
       }
 
-      if (imgKey) {
+      if (imgOptions) {
         const picture = requestFiles[imageFileKey];
 
         if (picture) {
@@ -258,6 +274,8 @@ const getUpdateMarkdownController =
           );
 
           secureUrl = uploadPicture.secure_url;
+          width = uploadPicture.width;
+          height = uploadPicture.height;
         }
       }
     }
@@ -324,10 +342,18 @@ const getUpdateMarkdownController =
         }
       : jsonDetails;
 
-    notParsedData = imgKey
+    notParsedData = imgOptions
       ? {
           ...notParsedData,
-          [imgKey]: secureUrl ? secureUrl : dbData[imgKey],
+          [imgOptions.imgKey]: secureUrl
+            ? secureUrl
+            : dbData[imgOptions.imgKey],
+          [imgOptions.imgWidthKey]: width
+            ? width
+            : dbData[imgOptions.imgWidthKey],
+          [imgOptions.imgHeightKey]: height
+            ? height
+            : dbData[imgOptions.imgHeightKey],
         }
       : notParsedData;
 

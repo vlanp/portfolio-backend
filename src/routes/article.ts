@@ -27,7 +27,11 @@ router.post(
   "/article/upload",
   isAdmin,
   fileUpload(),
-  getUploadMarkdownController<IArticle, IDbArticle>(ZArticle, Article, "imgUrl")
+  getUploadMarkdownController<IArticle, IDbArticle>(ZArticle, Article, {
+    imgKey: "imgUrl",
+    imgWidthKey: "imgWidth",
+    imgHeightKey: "imgHeight",
+  })
 );
 
 router.put(
@@ -37,7 +41,7 @@ router.put(
   getUpdateMarkdownController<IPartialArticle, IDbArticle>(
     ZPartialArticle,
     Article,
-    "imgUrl"
+    { imgKey: "imgUrl", imgWidthKey: "imgWidth", imgHeightKey: "imgHeight" }
   )
 );
 
