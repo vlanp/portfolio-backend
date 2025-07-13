@@ -9,6 +9,7 @@ import {
   IDbArticle,
   IPartialArticle,
   ZArticle,
+  ZDbArticle,
   ZDbArticleNoMd,
   ZPartialArticle,
 } from "../models/IArticle.js";
@@ -54,7 +55,7 @@ router.get("/article/downloadMd/:id", getDownloadMdController(Article));
 
 router.get(
   "/article/:id/fileContent",
-  getMdFileContentController(ZArticle, Article)
+  getMdFileContentController(ZDbArticle, Article)
 );
 
 router.get(
