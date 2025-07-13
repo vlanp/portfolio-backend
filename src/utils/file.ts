@@ -10,7 +10,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import { rehypeToc } from "./rehypeToc.js";
+import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
 import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
 
@@ -47,6 +47,12 @@ const getContent = async <ZT extends ZodType>(
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
+    .use(rehypeAddClass, {
+      mapping: [
+        { className: "basic-link", tagName: "a" },
+        { className: "md-ul", tagName: "ul" },
+      ],
+    }) // Before rehypeAutolinkHeadings because we don't want the class in the headings
     .use(rehypeAutolinkHeadings, {
       behavior: "wrap",
       properties: {

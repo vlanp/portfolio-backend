@@ -13,7 +13,7 @@ import { convertRelativeToAbsolutePaths } from "./convert.js";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
-import { rehypeToc } from "./rehypeToc.js";
+import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
 import IDocToC from "../models/IDocToc.js";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
@@ -155,6 +155,12 @@ const getContent = async (
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
+    .use(rehypeAddClass, {
+      mapping: [
+        { className: "basic-link", tagName: "a" },
+        { className: "md-ul", tagName: "ul" },
+      ],
+    }) // Before rehypeAutolinkHeadings because we don't want the class in the headings
     .use(rehypeAutolinkHeadings, {
       behavior: "wrap",
       properties: {

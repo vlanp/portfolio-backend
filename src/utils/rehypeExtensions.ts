@@ -1,8 +1,9 @@
 // Original code from https://github.com/pmndrs/docs/blob/main/src/components/mdx/Toc/rehypeToc.ts
 
 import { Plugin } from "unified";
-import { Node } from "hast";
+import { Node, Root } from "hast";
 import IDocToC from "../models/IDocToc.js";
+import { visit } from "unist-util-visit";
 
 const isTextNode = (
   node: Node
@@ -62,7 +63,7 @@ const isHeading = (node: Node): node is Node & { tagName: string } =>
   typeof node.tagName === "string" &&
   /^h[1-6]$/.test(node.tagName);
 
-export const rehypeToc = (target: IDocToC[] = []): Plugin => {
+const rehypeToc = (target: IDocToC[] = []): Plugin => {
   return () => (root: Node) => {
     const previous: Record<number, IDocToC> = {};
 
@@ -106,3 +107,23 @@ export const rehypeToc = (target: IDocToC[] = []): Plugin => {
     }
   };
 };
+
+const rehypeAddClass = (options: {
+  mapping: { tagName: string; className: string }[];
+}) => {
+  return function (tree: Root) {
+    options.mapping.forEach((el) => {
+      visit(tree, function (node) {
+        if (node.type === "element" && node.tagName === el.tagName) {
+          if (Array.isArray(node.properties.className)) {
+            node.properties.className.push(el.className);
+          } else {
+            node.properties.className = [el.className];
+          }
+        }
+      });
+    });
+  };
+};
+
+export { rehypeToc, rehypeAddClass };
