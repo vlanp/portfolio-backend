@@ -47,7 +47,7 @@ router.put(
 
 router.get(
   "/article/noMdContents",
-  getDatasNoMdContentsController(ZDbArticleNoMd, Article)
+  getDatasNoMdContentsController(ZDbArticleNoMd, Article, true)
 );
 
 router.get("/article/downloadMd/:id", getDownloadMdController(Article));

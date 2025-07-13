@@ -23,6 +23,10 @@ import {
   articlesCategoriesMapping,
   getAllChildsCategories,
 } from "../src/models/IArticle.js";
+import { ZESortsOut } from "../src/models/ISort.js";
+import { ZLimit } from "../src/models/ILimit.js";
+import { ZPage } from "../src/models/IPage.js";
+import { IPaginated } from "../src/models/IPaginated";
 
 const getUploadMarkdownController =
   <
@@ -381,8 +385,10 @@ const getDatasNoMdContentsController =
   <
     DataType extends {
       mdContents: Record<ILang, string>;
+      updatedAt: Date;
     },
-    DbDataType extends DataType
+    DbDataType extends DataType,
+    Paginated extends boolean = false
   >(
     ZDbDataTypeNoMd: z.ZodType<Omit<DbDataType, "mdContents">>,
     MongooseModel: mongoose.Model<
@@ -394,14 +400,28 @@ const getDatasNoMdContentsController =
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
       HydratedDocument<DbDataType>
-    >
+    >,
+    paginated?: Paginated
   ) =>
   async (
     req: Request,
-    res: IBadRequestResponse | IOkResponse<Omit<DataType, "mdContents">[]>
+    res:
+      | IBadRequestResponse
+      | IOkResponse<
+          typeof paginated extends true
+            ? IPaginated<Omit<DbDataType, "mdContents">>
+            : Omit<DbDataType, "mdContents">[]
+        >
   ) => {
     const filterKey = "categoryId";
+    const pageKey = "page";
+    const limitKey = "limit";
+    const sortKey = "sort";
     const categoryId = req.query[filterKey];
+    const unsafeSort = req.query[sortKey];
+    const unsafeLimit = req.query[limitKey];
+    const unsafePage = req.query[pageKey];
+    const defaultLimit = 20;
 
     const categoriesIds =
       typeof categoryId === "string"
@@ -440,6 +460,48 @@ const getDatasNoMdContentsController =
       getAllChildsCategories(categoryName)
     );
 
+    const sortParseResult = ZESortsOut.optional().safeParse(unsafeSort);
+
+    if (!sortParseResult.success) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(sortParseResult.error)
+      );
+      return;
+    }
+
+    const sort = sortParseResult.data;
+
+    const limitParseResult = ZLimit.optional().safeParse(unsafeLimit);
+
+    if (!limitParseResult.success) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(limitParseResult.error)
+      );
+      return;
+    }
+    const limit = limitParseResult.data;
+
+    const pageParseResult = ZPage.optional().safeParse(unsafePage);
+
+    if (!pageParseResult.success) {
+      (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
+        z.prettifyError(pageParseResult.error)
+      );
+      return;
+    }
+    const page = pageParseResult.data;
+
+    const numberOfDocuments = await MongooseModel.countDocuments(
+      allChildsCategories
+        ? {
+            category: {
+              $in: allChildsCategories,
+            },
+          }
+        : {},
+      { mdContents: 0 }
+    );
+
     const unsafeDatas = await MongooseModel.find(
       allChildsCategories
         ? {
@@ -449,7 +511,11 @@ const getDatasNoMdContentsController =
           }
         : {},
       { mdContents: 0 }
-    ).lean();
+    )
+      .sort({ updatedAt: sort ? sort : "ascending" })
+      .limit(limit ? limit : defaultLimit)
+      .skip(page ? (page - 1) * (limit ? limit : defaultLimit) : 0)
+      .lean();
     const datas = unsafeDatas.map((unsafeData) => {
       const dataParseResult = ZDbDataTypeNoMd.safeParse(unsafeData);
       if (!dataParseResult.success) {
@@ -457,9 +523,21 @@ const getDatasNoMdContentsController =
       }
       return dataParseResult.data;
     });
-    (
-      res as IOkResponse<Omit<DataType, "mdContents">[]>
-    ).responsesFunc.sendOkResponse(datas);
+    if (paginated) {
+      const paginatedDatas: IPaginated<Omit<DbDataType, "mdContents">> = {
+        elements: datas,
+        numberOfElements: numberOfDocuments,
+        totalNumberOfElements: numberOfDocuments,
+        totalPages: Math.ceil(numberOfDocuments / (limit || defaultLimit)),
+      };
+      (
+        res as IOkResponse<IPaginated<Omit<DbDataType, "mdContents">>>
+      ).responsesFunc.sendOkResponse(paginatedDatas);
+    } else {
+      (
+        res as IOkResponse<Omit<DbDataType, "mdContents">[]>
+      ).responsesFunc.sendOkResponse(datas);
+    }
   };
 
 const getDownloadMdController =
