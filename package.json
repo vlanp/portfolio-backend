@@ -5,8 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon ./build/src/index.js"
+    "start": "npx nodemon ./build/src/index.js",
+    "compile": "tsc --watch"
   },
   "keywords": [],
   "author": "",

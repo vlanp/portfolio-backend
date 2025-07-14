@@ -19,7 +19,7 @@ import {
   getMdFileContentController,
   getUpdateMarkdownController,
   getUploadMarkdownController,
-} from "../../controllers/markdownHandling.js";
+} from "../controllers/markdownHandling.js";
 import { IOkResponse } from "../models/ITypedResponse.js";
 
 const router = express.Router();

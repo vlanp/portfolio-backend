@@ -5,28 +5,24 @@ import {
   IFileResponse,
   INotFoundResponse,
   IOkResponse,
-} from "../src/models/ITypedResponse";
-import {
-  checkLocalizedFiles,
-  ILang,
-  ZELangs,
-} from "../src/models/ILocalized.js";
+} from "../models/ITypedResponse";
+import { checkLocalizedFiles, ILang, ZELangs } from "../models/ILocalized.js";
 import fileUpload from "express-fileupload";
 import { z } from "zod/v4";
 import mongoose, { HydratedDocument, isValidObjectId } from "mongoose";
-import { IContentWithExtraData } from "../src/models/IMatter";
-import { getContent } from "../src/utils/file.js";
-import { parsePicture } from "../src/utils/pictures.js";
+import { IContentWithExtraData } from "../models/IMatter";
+import { getContent } from "../utils/file.js";
+import { parsePicture } from "../utils/pictures.js";
 import { v2 as cloudinary } from "cloudinary";
-import { articlesFolder } from "../src/utils/config.js";
+import { articlesFolder } from "../utils/config.js";
 import {
   articlesCategoriesMapping,
   getAllChildsCategories,
-} from "../src/models/IArticle.js";
-import { ZESortsOut } from "../src/models/ISort.js";
-import { ZLimit } from "../src/models/ILimit.js";
-import { ZPage } from "../src/models/IPage.js";
-import { IPaginated } from "../src/models/IPaginated";
+} from "../models/IArticle.js";
+import { ZESortsOut } from "../models/ISort.js";
+import { ZLimit } from "../models/ILimit.js";
+import { ZPage } from "../models/IPage.js";
+import { IPaginated } from "../models/IPaginated";
 
 const getUploadMarkdownController =
   <

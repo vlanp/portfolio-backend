@@ -14,7 +14,7 @@ import {
   getMdFileContentController,
   getUpdateMarkdownController,
   getUploadMarkdownController,
-} from "../../controllers/markdownHandling.js";
+} from "../controllers/markdownHandling.js";
 
 const router = express.Router();
 
