@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import z from "zod/v4";
 import { localizationValidator, ZELangs } from "./ILocalized.js";
 import mongoose, { HydratedDocument, Model, Types } from "mongoose";
 
