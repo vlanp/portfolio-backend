@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node build/src/index.js",
+    "start": "node build/src/index.js",
     "dev": "tsc && nodemon build/src/index.js"
   },
   "keywords": [],
