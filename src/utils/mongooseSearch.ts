@@ -56,7 +56,7 @@ function searchDbWithIndex<T extends object, Paths extends string[]>(
         highlights: { $meta: "searchHighlights" },
       },
     });
-    console.log(JSON.stringify(pipeline, undefined, 2));
+    // console.log(JSON.stringify(pipeline, undefined, 2));
 
     return pipeline;
   };
