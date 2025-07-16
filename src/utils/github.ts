@@ -20,6 +20,7 @@ import remarkGithubAlerts from "remark-github-alerts";
 import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
 import { IContent, IGrayMatterFile } from "../models/IMatter.js";
+import rehypeExternalLinks from "rehype-external-links";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -165,6 +166,16 @@ const getContent = async (
       behavior: "wrap",
       properties: {
         className: ["anchor-link"],
+      },
+    })
+    .use(rehypeExternalLinks, {
+      rel: ["nofollow", "noopener"],
+      target: "_blank",
+      content: {
+        type: "element",
+        tagName: "span",
+        properties: { className: ["sr-only"] },
+        children: [{ type: "text", value: " (opens in new window)" }],
       },
     })
     .use(rehypeToc(tableOfContents))

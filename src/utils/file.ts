@@ -13,6 +13,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
 import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
+import rehypeExternalLinks from "rehype-external-links";
 
 const getContent = async <ZT extends ZodType>(
   mdContent: string,
@@ -57,6 +58,16 @@ const getContent = async <ZT extends ZodType>(
       behavior: "wrap",
       properties: {
         className: ["anchor-link"],
+      },
+    })
+    .use(rehypeExternalLinks, {
+      rel: ["nofollow", "noopener"],
+      target: "_blank",
+      content: {
+        type: "element",
+        tagName: "span",
+        properties: { className: ["sr-only"] },
+        children: [{ type: "text", value: " (opens in new window)" }],
       },
     })
     .use(rehypeToc(tableOfContents))
