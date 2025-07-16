@@ -42,7 +42,7 @@ import {
   ISelectedProjectsFilters,
   ZSelectedProjectsFilters,
 } from "../models/IProjectsFilters.js";
-import { arrayDistinctBy } from "../utils/array.js";
+import { arrayDistinctBy } from "../utils/common.js";
 import {
   IDocumentsWithHighlights,
   IDocumentWithHighlights,

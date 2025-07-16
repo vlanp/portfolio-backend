@@ -15,6 +15,8 @@ import { v2 as cloudinary } from "cloudinary";
 
 mongoose.connect(checkedEnv.MONGODB_URI);
 
+mongoose.Schema.Types.String.checkRequired((v) => v != null);
+
 const app = express();
 
 cloudinary.config({

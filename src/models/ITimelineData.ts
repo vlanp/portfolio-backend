@@ -1,6 +1,7 @@
 import z from "zod/v4";
 import { localizationValidator, ZELangs } from "./ILocalized.js";
 import mongoose, { HydratedDocument, Model, Types } from "mongoose";
+import { createRecordSchema } from "../utils/mongooseCommon.js";
 
 const ZETimelineElements = z.enum(["studies", "experiences", "projects"]);
 
@@ -117,15 +118,7 @@ const TimelineDataSchema = new mongoose.Schema<
   ITimelineDataModel
 >(
   {
-    title: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `Title must contain following keys : ${ZELangs.options}`,
-      },
-    },
+    title: createRecordSchema(ZELangs.options),
     startDate: {
       type: Date,
       required: true,
@@ -134,15 +127,7 @@ const TimelineDataSchema = new mongoose.Schema<
       type: Date,
       required: false,
     },
-    description: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `Description must contain following keys : ${ZELangs.options}`,
-      },
-    },
+    description: createRecordSchema(ZELangs.options),
     mdContents: {
       type: Map,
       of: String,
@@ -182,16 +167,16 @@ const TimelineDataSchema = new mongoose.Schema<
       },
     },
     status: {
-      type: {
-        en: {
-          type: String,
-          enum: ZTimelineProjectsData.shape.status.shape["en"].options,
-        },
-        fr: {
-          type: String,
-          enum: ZTimelineProjectsData.shape.status.shape["fr"].options,
-        },
-      },
+      type: Object.fromEntries(
+        ZELangs.options.map((lang) => [
+          lang,
+          {
+            type: String,
+            enum: ZTimelineProjectsData.shape.status.shape[lang].options,
+            required: true,
+          },
+        ])
+      ),
       required: function (this: ITimelineData) {
         return this.type === "projects";
       },
