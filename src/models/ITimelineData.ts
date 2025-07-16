@@ -128,15 +128,7 @@ const TimelineDataSchema = new mongoose.Schema<
       required: false,
     },
     description: createRecordSchema(ZELangs.options),
-    mdContents: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `mdContent must contain following keys : ${ZELangs.options}`,
-      },
-    },
+    mdContents: createRecordSchema(ZELangs.options),
     type: {
       type: String,
       required: true,
