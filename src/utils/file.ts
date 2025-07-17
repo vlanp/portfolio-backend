@@ -14,6 +14,7 @@ import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
 import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
 import rehypeExternalLinks from "rehype-external-links";
+import rehypeKatex from "rehype-katex";
 
 const getContent = async <ZT extends ZodType>(
   mdContent: string,
@@ -48,6 +49,7 @@ const getContent = async <ZT extends ZodType>(
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
+    .use(rehypeKatex)
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },

@@ -21,6 +21,7 @@ import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
 import { IContent, IGrayMatterFile } from "../models/IMatter.js";
 import rehypeExternalLinks from "rehype-external-links";
+import rehypeKatex from "rehype-katex";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -156,6 +157,7 @@ const getContent = async (
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
+    .use(rehypeKatex)
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },
