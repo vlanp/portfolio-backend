@@ -159,11 +159,7 @@ const getContent = async (
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
-    .use(rehypeMathjax, {
-      svg: {
-        fontCache: "global",
-      },
-    })
+    .use(rehypeMathjax)
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },
