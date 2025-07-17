@@ -14,7 +14,7 @@ import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
 import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
 import rehypeExternalLinks from "rehype-external-links";
-import rehypeKatex from "rehype-katex";
+import rehypeMathjax from "rehype-mathjax";
 import remarkMath from "remark-math";
 
 const getContent = async <ZT extends ZodType>(
@@ -51,7 +51,7 @@ const getContent = async <ZT extends ZodType>(
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
-    .use(rehypeKatex)
+    .use(rehypeMathjax)
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },

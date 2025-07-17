@@ -21,7 +21,7 @@ import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
 import { IContent, IGrayMatterFile } from "../models/IMatter.js";
 import rehypeExternalLinks from "rehype-external-links";
-import rehypeKatex from "rehype-katex";
+import rehypeMathjax from "rehype-mathjax";
 import remarkMath from "remark-math";
 
 type IOctokitContentResponse = Awaited<
@@ -159,7 +159,7 @@ const getContent = async (
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
-    .use(rehypeKatex)
+    .use(rehypeMathjax)
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },
