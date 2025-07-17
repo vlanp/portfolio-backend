@@ -15,7 +15,6 @@ import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeMathjax from "rehype-mathjax";
-import remarkMath from "remark-math";
 
 const getContent = async <ZT extends ZodType>(
   mdContent: string,
@@ -44,7 +43,6 @@ const getContent = async <ZT extends ZodType>(
 
   const processedContent = await unified()
     .use(remarkParse)
-    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkGithubAlerts)
     .use(remarkRehype, { allowDangerousHtml: true })
