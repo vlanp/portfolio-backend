@@ -53,11 +53,6 @@ const getContent = async <ZT extends ZodType>(
     .use(rehypeHighlight)
     .use(rehypeMathjax, {
       svg: {
-        scale: 1.2,
-        minScale: 0.5,
-        mtextInheritFont: true,
-        merrorInheritFont: true,
-        mathmlSpacing: false,
         fontCache: "global",
       },
     })
