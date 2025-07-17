@@ -22,6 +22,7 @@ import { z } from "zod/v4";
 import { IContent, IGrayMatterFile } from "../models/IMatter.js";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeMathjax from "rehype-mathjax";
+import remarkMath from "remark-math";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -151,13 +152,23 @@ const getContent = async (
 
   const processedContent = await unified()
     .use(remarkParse)
+    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkGithubAlerts)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
-    .use(rehypeMathjax)
+    .use(rehypeMathjax, {
+      svg: {
+        scale: 1.2,
+        minScale: 0.5,
+        mtextInheritFont: true,
+        merrorInheritFont: true,
+        mathmlSpacing: false,
+        fontCache: "global",
+      },
+    })
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },

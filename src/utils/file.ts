@@ -15,6 +15,7 @@ import rehypeStringify from "rehype-stringify";
 import { IContent } from "../models/IMatter";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeMathjax from "rehype-mathjax";
+import remarkMath from "remark-math";
 
 const getContent = async <ZT extends ZodType>(
   mdContent: string,
@@ -43,13 +44,23 @@ const getContent = async <ZT extends ZodType>(
 
   const processedContent = await unified()
     .use(remarkParse)
+    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkGithubAlerts)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeHighlight)
-    .use(rehypeMathjax)
+    .use(rehypeMathjax, {
+      svg: {
+        scale: 1.2,
+        minScale: 0.5,
+        mtextInheritFont: true,
+        merrorInheritFont: true,
+        mathmlSpacing: false,
+        fontCache: "global",
+      },
+    })
     .use(rehypeAddClass, {
       mapping: [
         { className: "basic-link", tagName: "a" },
