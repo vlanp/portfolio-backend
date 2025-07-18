@@ -172,6 +172,7 @@ const getContent = async (
       mapping: [
         { className: "basic-link", tagName: "a" },
         { className: "md-ul", tagName: "ul" },
+        { className: "responsive-table", tagName: "table" },
       ],
     }) // Before rehypeAutolinkHeadings because we don't want the class in the headings
     .use(rehypeAutolinkHeadings, {
