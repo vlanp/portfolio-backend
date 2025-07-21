@@ -88,7 +88,7 @@ importers:
         specifier: ^9.27.0
         version: 9.27.0
       '@tsconfig/node12':
-        specifier: ^12.1.3
+        specifier: ^12.1.4
         version: 12.1.4
       '@types/cors':
         specifier: ^2.8.18
