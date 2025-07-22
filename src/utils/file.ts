@@ -19,7 +19,8 @@ import rehypeKatex from "rehype-katex";
 
 const getContent = async <ZT extends ZodType>(
   mdContent: string,
-  MatterContentZodType?: ZT
+  MatterContentZodType?: ZT,
+  transformHtmlContent?: (htmlContent: string) => string
 ): Promise<IContent<z.infer<ZT>> | null> => {
   const unsafeMatterContent = matter(mdContent);
 
@@ -87,8 +88,11 @@ const getContent = async <ZT extends ZodType>(
     .use(rehypeStringify)
     .process(matterContent.content);
 
+  const transformedHtmlContent =
+    transformHtmlContent && transformHtmlContent(processedContent.toString());
+
   const content: IContent<z.infer<ZT>> = {
-    htmlContent: processedContent.toString(),
+    htmlContent: transformedHtmlContent || processedContent.toString(),
     matterContent: matterContent.data,
     tableOfContents,
   };

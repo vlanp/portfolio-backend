@@ -1,28 +1,13 @@
 import { Octokit } from "octokit";
 import type { Octokit as OctokitType } from "octokit";
 import checkedEnv from "./checkEnv.js";
-import matter from "gray-matter";
 import { LRUCache } from "lru-cache";
 import stableStringify from "json-stable-stringify";
-import remarkParse from "remark-parse";
-import remarkRehype from "remark-rehype";
-import rehypeRaw from "rehype-raw";
-import rehypeStringify from "rehype-stringify";
-import { unified } from "unified";
 import { convertRelativeToAbsolutePaths } from "./convert.js";
-import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import rehypeHighlight from "rehype-highlight";
-import { rehypeAddClass, rehypeToc } from "./rehypeExtensions.js";
-import IDocToC from "../models/IDocToc.js";
-import remarkGfm from "remark-gfm";
-import remarkGithubAlerts from "remark-github-alerts";
 import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
 import { IContent, IGrayMatterFile } from "../models/IMatter.js";
-import rehypeExternalLinks from "rehype-external-links";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
+import { getContent as getFileContent } from "./file.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -133,85 +118,31 @@ const getContent = async (
   if (typeof response.data !== "string") {
     throw new Error("Content is not a string");
   }
-  const unsafeMatterContent = matter(response.data);
 
-  const matterContentDataParseResult = ZFrontMatterData.safeParse(
-    unsafeMatterContent.data
+  const transformHtmlContent = (htmlContent: string) => {
+    return convertRelativeToAbsolutePaths(
+      htmlContent,
+      checkedEnv.BASE_GITHUB_RAW_URL +
+        "/" +
+        repo.owner +
+        "/" +
+        repo.repo +
+        "/" +
+        ref +
+        "/" +
+        path
+    );
+  };
+
+  const content: IContent<IFrontMatterData> | null = await getFileContent(
+    response.data,
+    ZFrontMatterData,
+    transformHtmlContent
   );
 
-  if (!matterContentDataParseResult.success) {
-    return null;
+  if (content) {
+    contentCache.set(cacheKey, content);
   }
-
-  const matterContent = {
-    ...unsafeMatterContent,
-    data: matterContentDataParseResult.data,
-  };
-
-  const tableOfContents: IDocToC[] = [];
-
-  const processedContent = await unified()
-    .use(remarkParse)
-    .use(remarkMath)
-    .use(remarkGfm)
-    .use(remarkGithubAlerts)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
-    .use(rehypeSlug)
-    .use(rehypeHighlight)
-    .use(rehypeKatex, {
-      output: "html",
-      strict: false,
-      trust: true,
-      macros: {
-        "\\RR": "\\mathbb{R}",
-        "\\NN": "\\mathbb{N}",
-      },
-    })
-    .use(rehypeAddClass, {
-      mapping: [
-        { className: "basic-link", tagName: "a" },
-        { className: "md-ul", tagName: "ul" },
-        { className: "responsive-table", tagName: "table" },
-      ],
-    }) // Before rehypeAutolinkHeadings because we don't want the class in the headings
-    .use(rehypeAutolinkHeadings, {
-      behavior: "wrap",
-      properties: {
-        className: ["anchor-link"],
-      },
-    })
-    .use(rehypeExternalLinks, {
-      rel: ["nofollow", "noopener"],
-      target: "_blank",
-      content: {
-        type: "element",
-        tagName: "span",
-        properties: { className: ["sr-only"] },
-        children: [{ type: "text", value: " (opens in new window)" }],
-      },
-    })
-    .use(rehypeToc(tableOfContents))
-    .use(rehypeStringify)
-    .process(matterContent.content);
-  const contentHtml = convertRelativeToAbsolutePaths(
-    processedContent.toString(),
-    checkedEnv.BASE_GITHUB_RAW_URL +
-      "/" +
-      repo.owner +
-      "/" +
-      repo.repo +
-      "/" +
-      ref +
-      "/" +
-      path
-  );
-  const content: IContent<IFrontMatterData> = {
-    htmlContent: contentHtml,
-    matterContent: matterContent.data,
-    tableOfContents,
-  };
-  contentCache.set(cacheKey, content);
   return content;
 };
 
