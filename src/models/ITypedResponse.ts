@@ -142,9 +142,10 @@ export const addTypedResponses = (
       mimetype: string
     ) => {
       fileResponse.setHeader("Content-Type", mimetype);
+      const encodedFileName = encodeURIComponent(fileName);
       fileResponse.setHeader(
         "Content-Disposition",
-        `attachment; filename="${fileName}.${fileExtension}"`
+        `attachment; filename="${encodedFileName}.${fileExtension}"`
       );
       fileResponse.status(200).send(content);
     },
