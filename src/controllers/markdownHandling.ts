@@ -10,8 +10,7 @@ import { checkLocalizedFiles, ILang, ZELangs } from "../models/ILocalized.js";
 import fileUpload from "express-fileupload";
 import { z } from "zod/v4";
 import mongoose, { HydratedDocument, isValidObjectId } from "mongoose";
-import { IContentWithExtraData } from "../models/IMatter";
-import { getContent } from "../utils/file.js";
+import { IContent, IContentWithExtraData } from "../models/IMatter";
 import { parsePicture } from "../utils/pictures.js";
 import { v2 as cloudinary } from "cloudinary";
 import { articlesFolder } from "../utils/config.js";
@@ -26,12 +25,13 @@ import { IPaginated } from "../models/IPaginated";
 
 const getUploadMarkdownController =
   <
-    DataType extends {
+    DataTypeIn extends {
       mdContents: Record<ILang, string>;
     },
-    DbDataType extends DataType
+    DataTypeOut extends DataTypeIn,
+    DbDataType extends DataTypeOut
   >(
-    ZDataType: z.ZodType<DataType, DataType>,
+    ZDataType: z.ZodType<DataTypeOut, DataTypeIn>,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -40,17 +40,17 @@ const getUploadMarkdownController =
       {},
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
-      HydratedDocument<DbDataType>
+      HydratedDocument<NoInfer<DbDataType>>
     >,
     imgOptions?: {
-      imgKey: keyof DataType & string;
-      imgWidthKey: keyof DataType & string;
-      imgHeightKey: keyof DataType & string;
+      imgKey: keyof DataTypeIn & string;
+      imgWidthKey: keyof DataTypeIn & string;
+      imgHeightKey: keyof DataTypeIn & string;
     }
   ) =>
   async (
     req: Request,
-    res: IBadRequestResponse | ICreatedResponse<DataType>
+    res: IBadRequestResponse | ICreatedResponse<DbDataType>
   ) => {
     const baseMarkdownFilesKey = "markdown";
     const imageFileKey = "image";
@@ -160,7 +160,7 @@ const getUploadMarkdownController =
       return;
     }
 
-    const dataParseResult = ZDataType.safeParse({
+    const dataParseResult = await ZDataType.safeParseAsync({
       ...jsonDetails,
       mdContents: mdContents,
       ...(imgOptions ? { [imgOptions.imgKey]: secureUrl } : {}),
@@ -177,23 +177,24 @@ const getUploadMarkdownController =
 
     const data = dataParseResult.data;
 
-    const newDbData = new MongooseModel<DataType>(data);
+    const newDbData = new MongooseModel<DataTypeIn>(data);
 
     const addedDbArticle = await newDbData.save();
 
     (res as ICreatedResponse<DbDataType>).responsesFunc.sendCreatedResponse(
-      addedDbArticle.toObject()
+      addedDbArticle
     );
   };
 
 const getUpdateMarkdownController =
   <
-    PartialDataType extends {
+    PartialDataTypeIn extends {
       mdContents?: Record<ILang, string>;
     },
-    DbDataType extends PartialDataType
+    PartialDataTypeOut extends PartialDataTypeIn,
+    DbDataType extends PartialDataTypeOut
   >(
-    ZPartialDataType: z.ZodType<PartialDataType>,
+    ZPartialDataType: z.ZodType<PartialDataTypeOut, PartialDataTypeIn>,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -202,12 +203,12 @@ const getUpdateMarkdownController =
       {},
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
-      HydratedDocument<DbDataType>
+      HydratedDocument<NoInfer<DbDataType>>
     >,
     imgOptions?: {
-      imgKey: keyof PartialDataType & string;
-      imgWidthKey: keyof PartialDataType & string;
-      imgHeightKey: keyof PartialDataType & string;
+      imgKey: keyof PartialDataTypeIn & string;
+      imgWidthKey: keyof PartialDataTypeIn & string;
+      imgHeightKey: keyof PartialDataTypeIn & string;
     }
   ) =>
   async (
@@ -357,7 +358,9 @@ const getUpdateMarkdownController =
         }
       : notParsedData;
 
-    const dataParseResult = ZPartialDataType.safeParse(notParsedData);
+    const dataParseResult = await ZPartialDataType.safeParseAsync(
+      notParsedData
+    );
 
     if (!dataParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -379,14 +382,19 @@ const getUpdateMarkdownController =
 
 const getDatasNoMdContentsController =
   <
-    DataType extends {
+    DataTypeIn extends {
       mdContents: Record<ILang, string>;
+    },
+    DataTypeOut extends DataTypeIn & {
+      htmlContents: Record<ILang, IContent<unknown>>;
       updatedAt: Date;
     },
-    DbDataType extends DataType,
+    DbDataType extends DataTypeOut,
     Paginated extends boolean = false
   >(
-    ZDbDataTypeNoMd: z.ZodType<Omit<DbDataType, "mdContents">>,
+    ZDbDataTypeNoMd: z.ZodType<
+      Omit<NoInfer<DbDataType>, "mdContents" | "htmlContents">
+    >,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -395,7 +403,7 @@ const getDatasNoMdContentsController =
       {},
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
-      HydratedDocument<DbDataType>
+      HydratedDocument<NoInfer<DbDataType>>
     >,
     paginated?: Paginated
   ) =>
@@ -405,8 +413,8 @@ const getDatasNoMdContentsController =
       | IBadRequestResponse
       | IOkResponse<
           typeof paginated extends true
-            ? IPaginated<Omit<DbDataType, "mdContents">>
-            : Omit<DbDataType, "mdContents">[]
+            ? IPaginated<Omit<DbDataType, "mdContents" | "htmlContents">>
+            : Omit<DbDataType, "mdContents" | "htmlContents">[]
         >
   ) => {
     const filterKey = "categoryId";
@@ -456,7 +464,9 @@ const getDatasNoMdContentsController =
       getAllChildsCategories(categoryName)
     );
 
-    const sortParseResult = ZESortsOut.optional().safeParse(unsafeSort);
+    const sortParseResult = await ZESortsOut.optional().safeParseAsync(
+      unsafeSort
+    );
 
     if (!sortParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -467,7 +477,9 @@ const getDatasNoMdContentsController =
 
     const sort = sortParseResult.data;
 
-    const limitParseResult = ZLimit.optional().safeParse(unsafeLimit);
+    const limitParseResult = await ZLimit.optional().safeParseAsync(
+      unsafeLimit
+    );
 
     if (!limitParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -477,7 +489,7 @@ const getDatasNoMdContentsController =
     }
     const limit = limitParseResult.data;
 
-    const pageParseResult = ZPage.optional().safeParse(unsafePage);
+    const pageParseResult = await ZPage.optional().safeParseAsync(unsafePage);
 
     if (!pageParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -512,37 +524,48 @@ const getDatasNoMdContentsController =
       .limit(limit ? limit : defaultLimit)
       .skip(page ? (page - 1) * (limit ? limit : defaultLimit) : 0)
       .lean();
-    const datas = unsafeDatas.map((unsafeData) => {
-      const dataParseResult = ZDbDataTypeNoMd.safeParse(unsafeData);
-      if (!dataParseResult.success) {
-        throw new Error(z.prettifyError(dataParseResult.error));
-      }
-      return dataParseResult.data;
-    });
+    const datas = await Promise.all(
+      unsafeDatas.map(async (unsafeData) => {
+        const dataParseResult = await ZDbDataTypeNoMd.safeParseAsync(
+          unsafeData
+        );
+        if (!dataParseResult.success) {
+          throw new Error(z.prettifyError(dataParseResult.error));
+        }
+        return dataParseResult.data;
+      })
+    );
     if (paginated) {
-      const paginatedDatas: IPaginated<Omit<DbDataType, "mdContents">> = {
+      const paginatedDatas: IPaginated<
+        Omit<DbDataType, "mdContents" | "htmlContents">
+      > = {
         elements: datas,
         numberOfElements: numberOfDocuments,
         totalNumberOfElements: numberOfDocuments,
         totalPages: Math.ceil(numberOfDocuments / (limit || defaultLimit)),
       };
       (
-        res as IOkResponse<IPaginated<Omit<DbDataType, "mdContents">>>
+        res as IOkResponse<
+          IPaginated<Omit<DbDataType, "mdContents" | "htmlContents">>
+        >
       ).responsesFunc.sendOkResponse(paginatedDatas);
     } else {
       (
-        res as IOkResponse<Omit<DbDataType, "mdContents">[]>
+        res as IOkResponse<Omit<DbDataType, "mdContents" | "htmlContents">[]>
       ).responsesFunc.sendOkResponse(datas);
     }
   };
 
 const getDownloadMdController =
   <
-    DataType extends {
+    DataTypeIn extends {
       mdContents: Record<ILang, string>;
       title: Record<ILang, string>;
     },
-    DbDataType extends DataType
+    DataTypeOut extends DataTypeIn & {
+      htmlContents: Record<ILang, IContent<unknown>>;
+    },
+    DbDataType extends DataTypeOut
   >(
     MongooseModel: mongoose.Model<
       DbDataType,
@@ -552,7 +575,7 @@ const getDownloadMdController =
       {},
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
-      HydratedDocument<DbDataType>
+      HydratedDocument<NoInfer<DbDataType>>
     >
   ) =>
   async (
@@ -561,7 +584,7 @@ const getDownloadMdController =
   ) => {
     const { lang: unsafeLang } = req.query;
 
-    const langParseResult = ZELangs.safeParse(unsafeLang);
+    const langParseResult = await ZELangs.safeParseAsync(unsafeLang);
 
     if (!langParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -599,12 +622,15 @@ const getDownloadMdController =
 
 const getMdFileContentController =
   <
-    DataType extends {
+    DataTypeIn extends {
       mdContents: Record<ILang, string>;
     },
-    DbDataType extends DataType
+    DataTypeOut extends DataTypeIn & {
+      htmlContents: Record<ILang, IContent<unknown>>;
+    },
+    DbDataType extends DataTypeOut
   >(
-    ZDbDataType: z.ZodType<DbDataType>,
+    ZDbDataType: z.ZodType<NoInfer<DbDataType>>,
     MongooseModel: mongoose.Model<
       DbDataType,
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -613,7 +639,7 @@ const getMdFileContentController =
       {},
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       {},
-      HydratedDocument<DbDataType>
+      HydratedDocument<NoInfer<DbDataType>>
     >
   ) =>
   async (
@@ -621,11 +647,15 @@ const getMdFileContentController =
     res:
       | IBadRequestResponse
       | INotFoundResponse
-      | IOkResponse<IContentWithExtraData<Omit<DataType, "mdContents">>>
+      | IOkResponse<
+          IContentWithExtraData<
+            Omit<DataTypeOut, "mdContents" | "htmlContents">
+          >
+        >
   ) => {
     const { lang: unsafeLang } = req.query;
 
-    const langParseResult = ZELangs.safeParse(unsafeLang);
+    const langParseResult = await ZELangs.safeParseAsync(unsafeLang);
 
     if (!langParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -650,7 +680,7 @@ const getMdFileContentController =
       );
       return;
     }
-    const dbDataParseResult = ZDbDataType.safeParse(unsafeDbData);
+    const dbDataParseResult = await ZDbDataType.safeParseAsync(unsafeDbData);
 
     if (!dbDataParseResult.success) {
       throw new Error(z.prettifyError(dbDataParseResult.error));
@@ -658,21 +688,16 @@ const getMdFileContentController =
 
     const dbData = dbDataParseResult.data;
 
-    const fileContent = await getContent(dbData.mdContents[lang]);
-    if (!fileContent) {
-      (res as INotFoundResponse).responsesFunc.sendNotFoundResponse(
-        "No file content found."
-      );
-      return;
-    }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { mdContents, ...dbDataNoMd } = dbData;
+    const { mdContents, htmlContents, ...dbDataNoMd } = dbData;
     const fileContentWithExtraData = {
-      ...fileContent,
+      ...dbData.htmlContents[lang],
       extraData: dbDataNoMd,
     };
     (
-      res as IOkResponse<IContentWithExtraData<Omit<DataType, "mdContents">>>
+      res as IOkResponse<
+        IContentWithExtraData<Omit<DataTypeOut, "mdContents" | "htmlContents">>
+      >
     ).responsesFunc.sendOkResponse(fileContentWithExtraData);
   };
 

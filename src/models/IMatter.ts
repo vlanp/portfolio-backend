@@ -1,18 +1,39 @@
-import { GrayMatterFile } from "gray-matter";
-import IDocToC from "./IDocToc";
+import { ZDocToc } from "./IDocToc.js";
+import z from "zod/v4";
 
-type IGrayMatterFile<H> = GrayMatterFile<string> & {
-  data: H;
+const getZContent = <ZMatterContent extends z.ZodType = z.ZodType>(
+  zMatterContent: ZMatterContent
+) => {
+  return z.object({
+    htmlContent: z.string(),
+    matterContent: zMatterContent,
+    tableOfContents: ZDocToc.array(),
+  });
 };
 
-interface IContent<H = unknown> {
-  htmlContent: string;
-  matterContent: IGrayMatterFile<H>["data"];
-  tableOfContents: IDocToC[];
-}
+type IContent<MatterContent> = z.infer<ReturnType<typeof getZContent>> & {
+  matterContent: MatterContent;
+};
 
-interface IContentWithExtraData<ED> extends IContent {
+const stringifyContent = (content: IContent<unknown>) => {
+  return JSON.stringify(content);
+};
+
+const parseContent = (
+  stringifiedContent: string,
+  ZMatterContent: z.ZodType = z.unknown()
+) => {
+  const obj = JSON.parse(stringifiedContent);
+  const contentParsedResult = getZContent(ZMatterContent).safeParse(obj);
+  if (!contentParsedResult.success) {
+    throw new Error(z.prettifyError(contentParsedResult.error));
+  }
+  return contentParsedResult.data;
+};
+
+interface IContentWithExtraData<ED> extends IContent<unknown> {
   extraData: ED;
 }
 
-export type { IGrayMatterFile, IContent, IContentWithExtraData };
+export type { IContent, IContentWithExtraData };
+export { getZContent, stringifyContent, parseContent };

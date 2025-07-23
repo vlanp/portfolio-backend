@@ -4,10 +4,7 @@ import fileUpload from "express-fileupload";
 import {
   Article,
   getArticlesCategories,
-  IArticle,
   IArticlesCategories,
-  IDbArticle,
-  IPartialArticle,
   ZArticle,
   ZDbArticle,
   ZDbArticleNoMd,
@@ -28,7 +25,7 @@ router.post(
   "/article/upload",
   isAdmin,
   fileUpload(),
-  getUploadMarkdownController<IArticle, IDbArticle>(ZArticle, Article, {
+  getUploadMarkdownController(ZArticle, Article, {
     imgKey: "imgUrl",
     imgWidthKey: "imgWidth",
     imgHeightKey: "imgHeight",
@@ -39,11 +36,11 @@ router.put(
   "/article/update/:id",
   isAdmin,
   fileUpload(),
-  getUpdateMarkdownController<IPartialArticle, IDbArticle>(
-    ZPartialArticle,
-    Article,
-    { imgKey: "imgUrl", imgWidthKey: "imgWidth", imgHeightKey: "imgHeight" }
-  )
+  getUpdateMarkdownController(ZPartialArticle, Article, {
+    imgKey: "imgUrl",
+    imgWidthKey: "imgWidth",
+    imgHeightKey: "imgHeight",
+  })
 );
 
 router.get(

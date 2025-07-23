@@ -6,7 +6,7 @@ import stableStringify from "json-stable-stringify";
 import { convertRelativeToAbsolutePaths } from "./convert.js";
 import { IDbRepo } from "../models/IRepo.js";
 import { z } from "zod/v4";
-import { IContent, IGrayMatterFile } from "../models/IMatter.js";
+import { IContent } from "../models/IMatter.js";
 import { getContent as getFileContent } from "./file.js";
 
 type IOctokitContentResponse = Awaited<
@@ -151,6 +151,5 @@ export type {
   IOctokitContentResponse,
   IOctokitTagsResponse,
   IOctokitTreeResponse,
-  IGrayMatterFile,
   IFrontMatterData,
 };

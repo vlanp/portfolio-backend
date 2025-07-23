@@ -1,7 +1,13 @@
 import { z } from "zod/v4";
 import { IOriginalCase } from "./IOriginalCase";
 import mongoose, { HydratedDocument, Model, Types } from "mongoose";
-import { localizationValidator, ZELangs } from "./ILocalized.js";
+import { ZELangs } from "./ILocalized.js";
+import {
+  createHtmlContents,
+  createPartialHtmlContents,
+} from "../utils/zodCommon.js";
+import { getZContent, parseContent, stringifyContent } from "./IMatter.js";
+import { createRecordSchema } from "../utils/mongooseCommon.js";
 
 const ZEArticlesCategories = z.enum([
   "TypeScript",
@@ -107,7 +113,7 @@ const getAllChildsCategories = (
   return childs.length > 0 ? childs : [articleCategory];
 };
 
-const ZArticle = z.object({
+const ZArticleIn = z.object({
   title: z.record(ZELangs, z.string()),
   description: z.record(ZELangs, z.string()),
   imgUrl: z.url({
@@ -120,18 +126,25 @@ const ZArticle = z.object({
   category: ZEArticlesCategories,
 });
 
+type IArticleIn = z.infer<typeof ZArticleIn>;
+
+const ZArticle = ZArticleIn.transform(createHtmlContents);
+
 type IArticle = z.infer<typeof ZArticle>;
 
-const ZArticleNoMd = ZArticle.omit({ mdContents: true });
+const ZArticleNoMd = ZArticleIn.omit({ mdContents: true });
 
 type IArticleNoMd = z.infer<typeof ZArticleNoMd>;
 
-const ZPartialArticle = ZArticle.partial();
+const ZPartialArticle = ZArticleIn.partial().transform(
+  createPartialHtmlContents
+);
 
 type IPartialArticle = z.infer<typeof ZPartialArticle>;
 
 const ZDbArticle = z.object({
-  ...ZArticle.shape,
+  ...ZArticleIn.shape,
+  htmlContents: z.record(ZELangs, getZContent(z.unknown())),
   _id: z.instanceof(Types.ObjectId),
   createdAt: z.instanceof(Date),
   updatedAt: z.instanceof(Date),
@@ -140,7 +153,10 @@ const ZDbArticle = z.object({
 
 type IDbArticle = z.infer<typeof ZDbArticle>;
 
-const ZDbArticleNoMd = ZDbArticle.omit({ mdContents: true });
+const ZDbArticleNoMd = ZDbArticle.omit({
+  mdContents: true,
+  htmlContents: true,
+});
 
 type IDbArticleNoMd = z.infer<typeof ZDbArticleNoMd>;
 
@@ -159,15 +175,7 @@ type IArticleModel = Model<
 
 const ArticleSchema = new mongoose.Schema<IArticle, IArticleModel>(
   {
-    title: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `Title must contain following keys : ${ZELangs.options}`,
-      },
-    },
+    title: createRecordSchema(ZELangs.options),
     imgUrl: {
       type: String,
       required: true,
@@ -182,24 +190,13 @@ const ArticleSchema = new mongoose.Schema<IArticle, IArticleModel>(
       required: true,
       min: 1,
     },
-    description: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `Description must contain following keys : ${ZELangs.options}`,
-      },
-    },
-    mdContents: {
-      type: Map,
-      of: String,
-      required: true,
-      validate: {
-        validator: localizationValidator,
-        message: `mdContent must contain following keys : ${ZELangs.options}`,
-      },
-    },
+    description: createRecordSchema(ZELangs.options),
+    mdContents: createRecordSchema(ZELangs.options),
+    htmlContents: createRecordSchema(
+      ZELangs.options,
+      parseContent,
+      stringifyContent
+    ),
     category: {
       type: String,
       enum: ZEArticlesCategories.options,
@@ -332,4 +329,5 @@ export type {
   IPartialArticle,
   IDbArticleNoMd,
   IArticlesCategories,
+  IArticleIn,
 };

@@ -44,6 +44,18 @@ const getOrThrow = <K extends string, V>(map: Map<K, V>, key: K) => {
   return value;
 };
 
+const transformRecordAsync = async <K extends string, V, R>(
+  record: Record<K, V>,
+  transform: (value: V) => Promise<R>
+): Promise<Record<K, R>> => {
+  const entries = await Promise.all(
+    Object.entries(record).map(
+      async ([key, value]) => [key, await transform(value as V)] as const
+    )
+  );
+  return Object.fromEntries(entries) as Record<K, R>;
+};
+
 export {
   arrayDistinct,
   arrayDistinctBy,
@@ -52,4 +64,5 @@ export {
   mapToRecord,
   getOrThrow,
   recordToMap,
+  transformRecordAsync,
 };

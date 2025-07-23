@@ -1,6 +1,5 @@
 import {
   IFrontMatterData,
-  IGrayMatterFile,
   IOctokitTagsResponse,
   IOctokitTreeResponse,
 } from "../utils/github.js";
@@ -18,7 +17,7 @@ interface IDir {
 
 interface IFile {
   file: IOctokitTreeResponse["data"]["tree"][0];
-  matterContent: IGrayMatterFile<IFrontMatterData>["data"];
+  matterContent: IFrontMatterData;
 }
 
 export type { ITagContent, IDir, IFile };

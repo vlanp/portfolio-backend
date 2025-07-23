@@ -2,12 +2,17 @@ import z from "zod/v4";
 import { localizationValidator, ZELangs } from "./ILocalized.js";
 import mongoose, { HydratedDocument, Model, Types } from "mongoose";
 import { createRecordSchema } from "../utils/mongooseCommon.js";
+import { getZContent, parseContent, stringifyContent } from "./IMatter.js";
+import {
+  createHtmlContents,
+  createPartialHtmlContents,
+} from "../utils/zodCommon.js";
 
 const ZETimelineElements = z.enum(["studies", "experiences", "projects"]);
 
 type ITimelineElement = z.infer<typeof ZETimelineElements>;
 
-const ZTimelineStudiesData = z.object({
+const ZTimelineStudiesDataIn = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
@@ -18,9 +23,14 @@ const ZTimelineStudiesData = z.object({
   type: z.literal(ZETimelineElements.enum.studies),
 });
 
+type ITimelineStudiesDataIn = z.infer<typeof ZTimelineStudiesDataIn>;
+
+const ZTimelineStudiesData =
+  ZTimelineStudiesDataIn.transform(createHtmlContents);
+
 type ITimelineStudiesData = z.infer<typeof ZTimelineStudiesData>;
 
-const ZTimelineExperiencesData = z.object({
+const ZTimelineExperiencesDataIn = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
@@ -31,9 +41,14 @@ const ZTimelineExperiencesData = z.object({
   type: z.literal(ZETimelineElements.enum.experiences),
 });
 
+type ITimelineExperiencesDataIn = z.infer<typeof ZTimelineExperiencesDataIn>;
+
+const ZTimelineExperiencesData =
+  ZTimelineExperiencesDataIn.transform(createHtmlContents);
+
 type ITimelineExperiencesData = z.infer<typeof ZTimelineExperiencesData>;
 
-const ZTimelineProjectsData = z.object({
+const ZTimelineProjectsDataIn = z.object({
   title: z.record(ZELangs, z.string()),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
@@ -57,9 +72,30 @@ const ZTimelineProjectsData = z.object({
   type: z.literal(ZETimelineElements.enum.projects),
 });
 
+type ITimelineProjectsDataIn = z.infer<typeof ZTimelineProjectsDataIn>;
+
+const ZTimelineProjectsData =
+  ZTimelineProjectsDataIn.transform(createHtmlContents);
+
 type ITimelineProjectsData = z.infer<typeof ZTimelineProjectsData>;
 
-const ZTimelineData = z.discriminatedUnion("type", [
+const ZTimelineDataIn = z.discriminatedUnion("type", [
+  ZTimelineExperiencesDataIn,
+  ZTimelineProjectsDataIn,
+  ZTimelineStudiesDataIn,
+]);
+
+type ITimelineDataIn = z.infer<typeof ZTimelineDataIn>;
+
+const ZPartialTimelineDataIn = z.discriminatedUnion("type", [
+  ZTimelineExperiencesDataIn.partial(),
+  ZTimelineProjectsDataIn.partial(),
+  ZTimelineStudiesDataIn.partial(),
+]);
+
+type IPartialTimelineDataIn = z.infer<typeof ZPartialTimelineDataIn>;
+
+const ZTimelineData = z.union([
   ZTimelineExperiencesData,
   ZTimelineProjectsData,
   ZTimelineStudiesData,
@@ -67,10 +103,10 @@ const ZTimelineData = z.discriminatedUnion("type", [
 
 type ITimelineData = z.infer<typeof ZTimelineData>;
 
-const ZPartialTimelineData = z.discriminatedUnion("type", [
-  ZTimelineExperiencesData.partial(),
-  ZTimelineProjectsData.partial(),
-  ZTimelineStudiesData.partial(),
+const ZPartialTimelineData = z.union([
+  ZTimelineExperiencesDataIn.partial().transform(createPartialHtmlContents),
+  ZTimelineProjectsDataIn.partial().transform(createPartialHtmlContents),
+  ZTimelineStudiesDataIn.partial().transform(createPartialHtmlContents),
 ]);
 
 type IPartialTimelineData = z.infer<typeof ZPartialTimelineData>;
@@ -78,24 +114,34 @@ type IPartialTimelineData = z.infer<typeof ZPartialTimelineData>;
 const createZodDb = <T extends z.ZodRawShape>(baseSchema: z.ZodObject<T>) =>
   z.object({
     ...baseSchema.shape,
+    htmlContents: z.record(ZELangs, getZContent(z.unknown())),
     _id: z.instanceof(Types.ObjectId),
     createdAt: z.instanceof(Date),
     updatedAt: z.instanceof(Date),
     __v: z.number(),
   });
 
-const ZDbTimelineData = z.discriminatedUnion("type", [
-  createZodDb(ZTimelineExperiencesData),
-  createZodDb(ZTimelineProjectsData),
-  createZodDb(ZTimelineStudiesData),
+const ZDbTimelineData = z.union([
+  createZodDb(ZTimelineExperiencesDataIn),
+  createZodDb(ZTimelineProjectsDataIn),
+  createZodDb(ZTimelineStudiesDataIn),
 ]);
 
 type IDbTimelineData = z.infer<typeof ZDbTimelineData>;
 
 const ZDbTimelineDataNoMd = z.discriminatedUnion("type", [
-  createZodDb(ZTimelineExperiencesData).omit({ mdContents: true }),
-  createZodDb(ZTimelineProjectsData).omit({ mdContents: true }),
-  createZodDb(ZTimelineStudiesData).omit({ mdContents: true }),
+  createZodDb(ZTimelineExperiencesDataIn).omit({
+    mdContents: true,
+    htmlContents: true,
+  }),
+  createZodDb(ZTimelineProjectsDataIn).omit({
+    mdContents: true,
+    htmlContents: true,
+  }),
+  createZodDb(ZTimelineStudiesDataIn).omit({
+    mdContents: true,
+    htmlContents: true,
+  }),
 ]);
 
 type IDbTimelineDataNoMd = z.infer<typeof ZDbTimelineDataNoMd>;
@@ -129,6 +175,11 @@ const TimelineDataSchema = new mongoose.Schema<
     },
     description: createRecordSchema(ZELangs.options),
     mdContents: createRecordSchema(ZELangs.options),
+    htmlContents: createRecordSchema(
+      ZELangs.options,
+      parseContent,
+      stringifyContent
+    ),
     type: {
       type: String,
       required: true,
@@ -164,7 +215,7 @@ const TimelineDataSchema = new mongoose.Schema<
           lang,
           {
             type: String,
-            enum: ZTimelineProjectsData.shape.status.shape[lang].options,
+            enum: ZTimelineProjectsDataIn.shape.status.shape[lang].options,
             required: true,
           },
         ])
@@ -198,13 +249,22 @@ const TimelineData = mongoose.model<ITimelineData, ITimelineDataModel>(
 
 const ZTimelineDatasNoMd = z.strictObject({
   [ZETimelineElements.enum.experiences]: z.array(
-    createZodDb(ZTimelineExperiencesData).omit({ mdContents: true })
+    createZodDb(ZTimelineExperiencesDataIn).omit({
+      mdContents: true,
+      htmlContents: true,
+    })
   ),
   [ZETimelineElements.enum.projects]: z.array(
-    createZodDb(ZTimelineProjectsData).omit({ mdContents: true })
+    createZodDb(ZTimelineProjectsDataIn).omit({
+      mdContents: true,
+      htmlContents: true,
+    })
   ),
   [ZETimelineElements.enum.studies]: z.array(
-    createZodDb(ZTimelineStudiesData).omit({ mdContents: true })
+    createZodDb(ZTimelineStudiesDataIn).omit({
+      mdContents: true,
+      htmlContents: true,
+    })
   ),
 });
 
@@ -218,8 +278,13 @@ export type {
   ITimelineExperiencesData,
   ITimelineStudiesData,
   IDbTimelineData,
-  IPartialTimelineData,
+  IPartialTimelineDataIn,
   IDbTimelineDataNoMd,
+  ITimelineStudiesDataIn,
+  ITimelineExperiencesDataIn,
+  ITimelineProjectsDataIn,
+  ITimelineDataIn,
+  IPartialTimelineData,
 };
 export {
   ZTimelineData,
@@ -230,6 +295,8 @@ export {
   ZTimelineStudiesData,
   ZDbTimelineData,
   TimelineData,
-  ZPartialTimelineData,
+  ZPartialTimelineDataIn,
   ZDbTimelineDataNoMd,
+  ZTimelineDataIn,
+  ZPartialTimelineData,
 };
