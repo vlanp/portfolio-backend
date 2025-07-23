@@ -1,7 +1,7 @@
 import { ZDocToc } from "./IDocToc.js";
 import z from "zod/v4";
 
-const getZContent = <ZMatterContent extends z.ZodType = z.ZodType>(
+const getZContent = <ZMatterContent extends z.ZodType = z.ZodUnknown>(
   zMatterContent: ZMatterContent
 ) => {
   return z.object({
@@ -24,10 +24,13 @@ const parseContent = (
   ZMatterContent: z.ZodType = z.unknown()
 ) => {
   const obj = JSON.parse(stringifiedContent);
+
   const contentParsedResult = getZContent(ZMatterContent).safeParse(obj);
+
   if (!contentParsedResult.success) {
     throw new Error(z.prettifyError(contentParsedResult.error));
   }
+
   return contentParsedResult.data;
 };
 

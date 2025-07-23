@@ -464,9 +464,7 @@ const getDatasNoMdContentsController =
       getAllChildsCategories(categoryName)
     );
 
-    const sortParseResult = await ZESortsOut.optional().safeParseAsync(
-      unsafeSort
-    );
+    const sortParseResult = ZESortsOut.optional().safeParse(unsafeSort);
 
     if (!sortParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -477,9 +475,7 @@ const getDatasNoMdContentsController =
 
     const sort = sortParseResult.data;
 
-    const limitParseResult = await ZLimit.optional().safeParseAsync(
-      unsafeLimit
-    );
+    const limitParseResult = ZLimit.optional().safeParse(unsafeLimit);
 
     if (!limitParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -489,7 +485,7 @@ const getDatasNoMdContentsController =
     }
     const limit = limitParseResult.data;
 
-    const pageParseResult = await ZPage.optional().safeParseAsync(unsafePage);
+    const pageParseResult = ZPage.optional().safeParse(unsafePage);
 
     if (!pageParseResult.success) {
       (res as IBadRequestResponse).responsesFunc.sendBadRequestResponse(
@@ -680,6 +676,9 @@ const getMdFileContentController =
       );
       return;
     }
+
+    // console.log(unsafeDbData);
+
     const dbDataParseResult = await ZDbDataType.safeParseAsync(unsafeDbData);
 
     if (!dbDataParseResult.success) {

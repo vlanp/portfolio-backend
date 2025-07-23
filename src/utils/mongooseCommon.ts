@@ -19,10 +19,10 @@ const createRecordSchema = <K extends string, T>(
       required: true,
     };
     if (get) {
-      recordSchema[v]["get"] = get;
+      recordSchema[v]["get"] = (data: string) => get(data); // Mongoose get function received more than 1 parameter, so we make sure only the first one is passed
     }
     if (set) {
-      recordSchema[v]["set"] = set;
+      recordSchema[v]["set"] = (data: T) => set(data);
     }
   });
 

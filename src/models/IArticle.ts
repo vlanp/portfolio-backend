@@ -8,6 +8,7 @@ import {
 } from "../utils/zodCommon.js";
 import { getZContent, parseContent, stringifyContent } from "./IMatter.js";
 import { createRecordSchema } from "../utils/mongooseCommon.js";
+import mongooseLeanGetters from "mongoose-lean-getters";
 
 const ZEArticlesCategories = z.enum([
   "TypeScript",
@@ -208,6 +209,10 @@ const ArticleSchema = new mongoose.Schema<IArticle, IArticleModel>(
     _id: true,
   }
 );
+
+ArticleSchema.plugin(mongooseLeanGetters, {
+  defaultLeanOptions: { getters: true },
+});
 
 const Article = mongoose.model<IArticle, IArticleModel>(
   "Article",

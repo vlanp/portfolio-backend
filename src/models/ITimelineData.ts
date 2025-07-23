@@ -7,6 +7,7 @@ import {
   createHtmlContents,
   createPartialHtmlContents,
 } from "../utils/zodCommon.js";
+import mongooseLeanGetters from "mongoose-lean-getters";
 
 const ZETimelineElements = z.enum(["studies", "experiences", "projects"]);
 
@@ -235,6 +236,10 @@ const TimelineDataSchema = new mongoose.Schema<
     discriminatorKey: "type",
   }
 );
+
+TimelineDataSchema.plugin(mongooseLeanGetters, {
+  defaultLeanOptions: { getters: true },
+});
 
 TimelineDataSchema.pre("validate", function () {
   if (this.endDate && this.startDate && this.endDate < this.startDate) {
