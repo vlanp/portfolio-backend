@@ -2,20 +2,26 @@ import z from "zod/v4";
 import ICheckOutFramework from "./ICheckOutFramework";
 
 const ZEFrameworksJavascriptIn = z.enum([
-  "TYPESCRIPT",
-  "REACT",
   "ANGULAR",
-  "VUE_JS",
-  "PREACT",
-  "NEXT_JS",
-  "VITE",
-  "REACT_NATIVE",
+  "AXIOS",
+  "CLOUDINARY",
   "EXPO",
+  "EXPRESS_JS",
+  "FONT_AWESOME",
+  "MONGOOSE",
+  "NEXT_JS",
   "NODE_JS",
   "NODEMON",
-  "EXPRESS_JS",
+  "PREACT",
+  "REACT",
+  "REACT_NATIVE",
+  "REACT_ROUTER",
   "SHADCN",
+  "STRIPE",
   "THREE_JS",
+  "TYPESCRIPT",
+  "VITE",
+  "VUE_JS",
 ]);
 
 type IFrameworkJavascriptIn = z.infer<typeof ZEFrameworksJavascriptIn>;
@@ -90,6 +96,36 @@ const frameworksJavascriptMapping = {
     name: "Three.js",
     iconName: "SiThreedotjs",
     color: "#000000",
+  },
+  AXIOS: {
+    name: "Axios",
+    iconName: "SiAxios",
+    color: "#5A29E4",
+  },
+  CLOUDINARY: {
+    name: "Cloudinary",
+    iconName: "SiCloudinary",
+    color: "#3448C5",
+  },
+  FONT_AWESOME: {
+    name: "Font Awesome",
+    iconName: "SiFontawesome",
+    color: "#538DD7",
+  },
+  MONGOOSE: {
+    name: "Mongoose",
+    iconName: "SiMongoose",
+    color: "#880000",
+  },
+  REACT_ROUTER: {
+    name: "React Router",
+    iconName: "SiReactrouter",
+    color: "#CA4245",
+  },
+  STRIPE: {
+    name: "Stripe",
+    iconName: "SiStripe",
+    color: "#635BFF",
   },
 } as const satisfies Record<IFrameworkJavascriptIn, ICheckOutFramework>;
 
