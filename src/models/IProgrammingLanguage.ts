@@ -9,6 +9,7 @@ const ZEProgrammingLanguagesIn = z.enum([
 ]);
 
 interface ICheckOutProgrammingLanguage {
+  type: "ReactIcon";
   name: string;
   iconName: string;
   color: string;
@@ -18,26 +19,31 @@ type IProgrammingLanguageIn = z.infer<typeof ZEProgrammingLanguagesIn>;
 
 const programmingLanguagesMapping = {
   JAVASCRIPT: {
+    type: "ReactIcon",
     name: "JavaScript",
     iconName: "SiJavascript",
     color: "#F7DF1E",
   },
   PYTHON: {
+    type: "ReactIcon",
     name: "Python",
     iconName: "SiPython",
     color: "#3776AB",
   },
   KOTLIN: {
+    type: "ReactIcon",
     name: "Kotlin",
     iconName: "SiKotlin",
     color: "#7F52FF",
   },
   CSS: {
+    type: "ReactIcon",
     name: "CSS",
     iconName: "SiCss3",
     color: "#256BAA",
   },
   HTML: {
+    type: "ReactIcon",
     name: "HTML",
     iconName: "SiHtml5",
     color: "#E34F26",
