@@ -22,6 +22,8 @@ const ZEFrameworksJavascriptIn = z.enum([
   "TYPESCRIPT",
   "VITE",
   "VUE_JS",
+  "ZUSTAND",
+  "NODEMAILER",
 ]);
 
 type IFrameworkJavascriptIn = z.infer<typeof ZEFrameworksJavascriptIn>;
@@ -126,6 +128,16 @@ const frameworksJavascriptMapping = {
     name: "Stripe",
     iconName: "SiStripe",
     color: "#635BFF",
+  },
+  ZUSTAND: {
+    name: "Zustand",
+    imgLink:
+      "https://res.cloudinary.com/dwuvdquym/image/upload/v1754593043/portolio/frameworks/Zustand_2_epbxz2.svg",
+  },
+  NODEMAILER: {
+    name: "Nodemailer",
+    imgLink:
+      "https://res.cloudinary.com/dwuvdquym/image/upload/v1754593360/portolio/frameworks/Nodemailer_mxqm4u.png",
   },
 } as const satisfies Record<IFrameworkJavascriptIn, ICheckOutFramework>;
 
