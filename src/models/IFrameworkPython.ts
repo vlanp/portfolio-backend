@@ -7,11 +7,13 @@ type IFrameworkPythonIn = z.infer<typeof ZEFrameworksPythonIn>;
 
 const frameworksPythonMapping = {
   DJANGO: {
+    type: "ReactIcon",
     name: "Django",
     iconName: "SiDjango",
     color: "#092E20",
   },
   FASTAPI: {
+    type: "ReactIcon",
     name: "FastAPI",
     iconName: "SiFastapi",
     color: "#009688",

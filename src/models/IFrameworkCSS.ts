@@ -7,11 +7,13 @@ type IFrameworkCSSIn = z.infer<typeof ZEFrameworksCSSIn>;
 
 const frameworksCSSMapping = {
   TAILWIND_CSS: {
+    type: "ReactIcon",
     name: "Tailwind CSS",
     iconName: "SiTailwindcss",
     color: "#06B6D4",
   },
   SASS: {
+    type: "ReactIcon",
     name: "Sass",
     iconName: "SiSass",
     color: "#CC6699",

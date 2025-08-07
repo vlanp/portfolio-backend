@@ -7,6 +7,7 @@ type IFrameworkKotlinIn = z.infer<typeof ZEFrameworksKotlinIn>;
 
 const frameworksKotlinMapping = {
   JETPACK_COMPOSE: {
+    type: "ReactIcon",
     name: "Jetpack Compose",
     iconName: "SiJetpackcompose",
     color: "#4285F4",
