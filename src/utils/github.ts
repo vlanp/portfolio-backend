@@ -1,23 +1,13 @@
 import { Octokit } from "octokit";
 import type { Octokit as OctokitType } from "octokit";
 import checkedEnv from "./checkEnv.js";
-import matter, { GrayMatterFile } from "gray-matter";
 import { LRUCache } from "lru-cache";
 import stableStringify from "json-stable-stringify";
-import remarkParse from "remark-parse";
-import remarkRehype from "remark-rehype";
-import rehypeRaw from "rehype-raw";
-import rehypeStringify from "rehype-stringify";
-import { unified } from "unified";
 import { convertRelativeToAbsolutePaths } from "./convert.js";
-import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import rehypeHighlight from "rehype-highlight";
-import { rehypeToc } from "./rehypeToc.js";
-import IDocToC from "../models/IDocToc.js";
-import remarkGfm from "remark-gfm";
-import remarkGithubAlerts from "remark-github-alerts";
-import { IRepo } from "../models/IRepo.js";
+import { IDbRepo } from "../models/IRepo.js";
+import { z } from "zod/v4";
+import { IContent } from "../models/IMatter.js";
+import { getContent as getFileContent } from "./file.js";
 
 type IOctokitContentResponse = Awaited<
   ReturnType<OctokitType["rest"]["repos"]["getContent"]>
@@ -31,22 +21,14 @@ type IOctokitTreeResponse = Awaited<
   ReturnType<OctokitType["rest"]["git"]["getTree"]>
 >;
 
-interface IFrontMatterData {
-  title: string;
-  description: string;
-  nav: number;
-  id?: string | undefined;
-}
+const ZFrontMatterData = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  nav: z.number().optional(),
+  id: z.string().optional(),
+});
 
-type IGrayMatterFile<H> = GrayMatterFile<string> & {
-  data: H;
-};
-
-interface IContent {
-  htmlContent: string;
-  matterContent: IGrayMatterFile<IFrontMatterData>["data"];
-  tableOfContents: IDocToC[];
-}
+type IFrontMatterData = z.infer<typeof ZFrontMatterData>;
 
 const cacheOptions = {
   max: 100,
@@ -59,13 +41,17 @@ const tagsCache = new LRUCache<string, IOctokitTagsResponse["data"]>(
 const treeCache = new LRUCache<string, IOctokitTreeResponse["data"]>(
   cacheOptions
 );
-const contentCache = new LRUCache<string, IContent>(cacheOptions);
+const contentCache = new LRUCache<string, IContent<IFrontMatterData>>(
+  cacheOptions
+);
 
 const octokit = new Octokit({
   auth: checkedEnv.GITHUB_READ_TOKEN,
 });
 
-const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
+const getTags = async (
+  repo: IDbRepo
+): Promise<IOctokitTagsResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTags";
   const cachedResult = tagsCache.get(cacheKey);
   if (cachedResult) {
@@ -83,7 +69,7 @@ const getTags = async (repo: IRepo): Promise<IOctokitTagsResponse["data"]> => {
 };
 
 const getDocsTree = async (
-  repo: IRepo,
+  repo: IDbRepo,
   sha: string
 ): Promise<IOctokitTreeResponse["data"]> => {
   const cacheKey = stableStringify(repo) + "/getTree/" + sha;
@@ -112,10 +98,10 @@ const getDocsTree = async (
 };
 
 const getContent = async (
-  repo: IRepo,
+  repo: IDbRepo,
   path: string,
   ref: string
-): Promise<IContent> => {
+): Promise<IContent<IFrontMatterData> | null> => {
   const cacheKey = stableStringify(repo) + "/getRawContent/" + path + "/" + ref;
   const cachedResult = contentCache.get(cacheKey);
   if (cachedResult) {
@@ -132,56 +118,38 @@ const getContent = async (
   if (typeof response.data !== "string") {
     throw new Error("Content is not a string");
   }
-  const matterContent = matter(
-    response.data
-  ) as IGrayMatterFile<IFrontMatterData>;
 
-  const tableOfContents: IDocToC[] = [];
-
-  const processedContent = await unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkGithubAlerts)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
-    .use(rehypeSlug)
-    .use(rehypeHighlight)
-    .use(rehypeAutolinkHeadings, {
-      behavior: "wrap",
-      properties: {
-        className: ["anchor-link"],
-      },
-    })
-    .use(rehypeToc(tableOfContents))
-    .use(rehypeStringify)
-    .process(matterContent.content);
-  const contentHtml = convertRelativeToAbsolutePaths(
-    processedContent.toString(),
-    checkedEnv.BASE_GITHUB_RAW_URL +
-      "/" +
-      repo.owner +
-      "/" +
-      repo.repo +
-      "/" +
-      ref +
-      "/" +
-      path
-  );
-  const content: IContent = {
-    htmlContent: contentHtml,
-    matterContent: matterContent.data,
-    tableOfContents,
+  const transformHtmlContent = (htmlContent: string) => {
+    return convertRelativeToAbsolutePaths(
+      htmlContent,
+      checkedEnv.BASE_GITHUB_RAW_URL +
+        "/" +
+        repo.owner +
+        "/" +
+        repo.repo +
+        "/" +
+        ref +
+        "/" +
+        path
+    );
   };
-  contentCache.set(cacheKey, content);
+
+  const content: IContent<IFrontMatterData> | null = await getFileContent(
+    response.data,
+    ZFrontMatterData,
+    transformHtmlContent
+  );
+
+  if (content) {
+    contentCache.set(cacheKey, content);
+  }
   return content;
 };
 
-export { getTags, getDocsTree, getContent };
+export { getTags, getDocsTree, getContent, ZFrontMatterData };
 export type {
   IOctokitContentResponse,
   IOctokitTagsResponse,
   IOctokitTreeResponse,
-  IContent,
-  IGrayMatterFile,
   IFrontMatterData,
 };

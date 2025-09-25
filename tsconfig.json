@@ -7,6 +7,8 @@
     "preserveConstEnums": true,
     "outDir": "build",
     "strict": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   }
 }

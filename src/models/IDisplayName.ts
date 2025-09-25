@@ -1,23 +1,15 @@
 import z from "zod/v4";
-import { IRepoType, ZERepoTypes } from "./IRepoType.js";
+import { ZERepoTypes } from "./IRepoType.js";
 import mongoose from "mongoose";
 
-const ZDisplayName = z.object({
+const ZDisplayName = z.strictObject({
   name: z.string(),
   type: ZERepoTypes,
 });
 
 type IDisplayName = z.infer<typeof ZDisplayName>;
 
-class DisplayName implements IDisplayName {
-  name: string;
-  type: IRepoType;
-  toString: () => string = () => this.name + " " + this.type;
-  constructor(name: string, type: IRepoType) {
-    this.name = name;
-    this.type = type;
-  }
-}
+type IDbDisplayName = IDisplayName;
 
 const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
   {
@@ -27,12 +19,12 @@ const DisplayNameSchema = new mongoose.Schema<IDisplayName>(
     },
     type: {
       type: String,
-      enum: Object.values(ZERepoTypes.enum),
+      enum: ZERepoTypes.options,
       required: true,
     },
   },
   { _id: false }
 );
 
-export { DisplayName, ZDisplayName, DisplayNameSchema };
-export type { IDisplayName };
+export { ZDisplayName, DisplayNameSchema };
+export type { IDisplayName, IDbDisplayName };

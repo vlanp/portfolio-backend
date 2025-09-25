@@ -1,12 +1,28 @@
 import { z } from "zod/v4";
+import ICheckOutFramework from "./ICheckOutFramework";
 
-const frameworksCSS = {
-  TAILWIND_CSS: "Tailwind CSS",
-} as const;
+const ZEFrameworksCSSIn = z.enum(["TAILWIND_CSS", "SASS"]);
 
-const ZEFrameworksCSS = z.enum(frameworksCSS);
+type IFrameworkCSSIn = z.infer<typeof ZEFrameworksCSSIn>;
 
-type IFrameworkCSS = z.infer<typeof ZEFrameworksCSS>;
+const frameworksCSSMapping = {
+  TAILWIND_CSS: {
+    type: "ReactIcon",
+    name: "Tailwind CSS",
+    iconName: "SiTailwindcss",
+    color: "#06B6D4",
+  },
+  SASS: {
+    type: "ReactIcon",
+    name: "Sass",
+    iconName: "SiSass",
+    color: "#CC6699",
+  },
+} as const satisfies Record<IFrameworkCSSIn, ICheckOutFramework>;
 
-export type { IFrameworkCSS };
-export { ZEFrameworksCSS };
+type IFrameworksCSSMapping = typeof frameworksCSSMapping;
+
+type IFrameworkCSSOut = IFrameworksCSSMapping[IFrameworkCSSIn];
+
+export type { IFrameworkCSSIn, IFrameworksCSSMapping, IFrameworkCSSOut };
+export { frameworksCSSMapping, ZEFrameworksCSSIn };
