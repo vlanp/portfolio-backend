@@ -5,6 +5,7 @@ import projectRouter from "./routes/project.js";
 import pictureRouter from "./routes/picture.js";
 import timelineRouter from "./routes/timeline.js";
 import articleRouter from "./routes/article.js";
+import adminRouter from "./routes/admin.js";
 // import testRouter from "./routes/someTest.js";
 import cors from "cors";
 import {
@@ -44,6 +45,8 @@ app.use(timelineRouter);
 
 app.use(articleRouter);
 
+app.use(adminRouter);
+
 // app.use(testRouter);
 
 app.all("/*all", (req, res) => {
@@ -56,7 +59,7 @@ function errorHandler(
   err: Error,
   req: Request,
   res: IInternalServerErrorResponse,
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (res.headersSent) {
     return next(err);
